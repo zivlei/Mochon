@@ -4,7 +4,7 @@
 "use strict";
 
 /** Paste the Google Apps Script web-app address here (ends with /exec). Empty = keep everything on the device only. */
-const CLOUD_URL = "";
+const CLOUD_URL = "https://script.google.com/macros/s/AKfycbz_551IwUxBXzmOMqMJtmX2hcH7yABQQ85XNMObOZuGp3Rua5UvAlZJzJJGTRACxkcE/exec";
 
 const Cloud = {
   MAX_OUTBOX: 500,

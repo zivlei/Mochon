@@ -2,7 +2,7 @@
 "use strict";
 
 /** Bump this together with version.json on every release – installed apps compare it to show "update available". */
-const APP_VERSION = "3.3.0";
+const APP_VERSION = "3.3.1";
 
 // ---------- helpers ----------
 const $ = (s, r) => (r || document).querySelector(s);
