@@ -1,6 +1,6 @@
 {
-  "name": "משחק הזיכרון",
-  "short_name": "זיכרון",
+  "name": "מוחון – אימון למוח",
+  "short_name": "מוחון",
   "lang": "he",
   "dir": "rtl",
   "start_url": "./",

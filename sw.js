@@ -1,6 +1,6 @@
 // Simple offline cache so the game works without internet after first visit
-const CACHE = "memory-game-v1";
-const FILES = ["./", "index.html", "manifest.webmanifest", "icon.svg"];
+const CACHE = "mochon-v2";
+const FILES = ["./", "index.html", "manifest.webmanifest", "icon.svg", "css/style.css", "js/core.js", "js/app.js", "js/games/match.js", "js/games/simon.js", "js/games/math.js", "js/games/oddone.js", "js/games/schulte.js", "js/games/targets.js"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)));
