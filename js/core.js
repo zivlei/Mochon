@@ -2,7 +2,7 @@
 "use strict";
 
 /** Bump this together with version.json on every release – installed apps compare it to show "update available". */
-const APP_VERSION = "3.2.0";
+const APP_VERSION = "3.3.0";
 
 // ---------- helpers ----------
 const $ = (s, r) => (r || document).querySelector(s);
@@ -70,12 +70,45 @@ const CATS = {
   focus:    { name: "ריכוז", icon: "🎯", color: "#7b4fb5" },
   coord:    { name: "קואורדינציה", icon: "✋", color: "#2e8b57" },
   language: { name: "שפה", icon: "📝", color: "#b03a6a" },
-  logic:    { name: "היגיון", icon: "🧩", color: "#0f7c86" }
+  logic:    { name: "היגיון", icon: "🧩", color: "#0f7c86" },
+  daily:    { name: "יום־יום", icon: "🧭", color: "#8a5a14" }
 };
 const MAX_LEVEL = 30, PASS_SCORE = 50;
 /** linear interpolation over levels 1..30 */
 const lerp = (a, b, l) => a + ((b - a) * (clamp(l, 1, MAX_LEVEL) - 1)) / (MAX_LEVEL - 1);
 const levelMult = (l) => Math.round((1 + (l - 1) * 0.1) * 10) / 10;
+
+// ---------- shared picture bank: emoji, Hebrew name, type, colour (colour only where it is clear on every device) ----------
+const ITEMS = [
+  ["🍎", "תפוח", "fruit", "red"], ["🍌", "בננה", "fruit", "yellow"], ["🍇", "ענבים", "fruit"], ["🍓", "תות", "fruit", "red"],
+  ["🍊", "תפוז", "fruit", "orange"], ["🍋", "לימון", "fruit", "yellow"], ["🍐", "אגס", "fruit"], ["🍒", "דובדבן", "fruit", "red"],
+  ["🍉", "אבטיח", "fruit"], ["🥝", "קיווי", "fruit", "green"], ["🍑", "אפרסק", "fruit", "orange"], ["🍍", "אננס", "fruit"], ["🍏", "תפוח ירוק", "fruit", "green"],
+  ["🥕", "גזר", "veg", "orange"], ["🍅", "עגבנייה", "veg", "red"], ["🥒", "מלפפון", "veg", "green"], ["🌽", "תירס", "veg", "yellow"],
+  ["🥦", "ברוקולי", "veg", "green"], ["🧅", "בצל", "veg"], ["🍆", "חציל", "veg"], ["🥔", "תפוח אדמה", "veg"], ["🌶️", "פלפל חריף", "veg", "red"], ["🫑", "פלפל ירוק", "veg", "green"],
+  ["🥛", "חלב", "food"], ["🧀", "גבינה", "food", "yellow"], ["🍞", "לחם", "food"], ["🥚", "ביצה", "food"], ["🍯", "דבש", "food"],
+  ["🍫", "שוקולד", "food"], ["☕", "קפה", "food"], ["🍪", "עוגייה", "food"], ["🧂", "מלח", "food"], ["🍚", "אורז", "food"], ["🧈", "חמאה", "food"],
+  ["🐶", "כלב", "animal"], ["🐱", "חתול", "animal"], ["🐸", "צפרדע", "animal", "green"], ["🐞", "פרת משה רבנו", "animal", "red"],
+  ["🐥", "אפרוח", "animal", "yellow"], ["🐢", "צב", "animal", "green"], ["🐳", "לוויתן", "animal"], ["🦀", "סרטן", "animal", "red"],
+  ["🐘", "פיל", "animal"], ["🦋", "פרפר", "animal"], ["🐰", "ארנב", "animal"], ["🦁", "אריה", "animal", "orange"], ["🐄", "פרה", "animal"], ["🐔", "תרנגולת", "animal"],
+  ["🚗", "מכונית", "vehicle", "red"], ["🚕", "מונית", "vehicle", "yellow"], ["🚌", "אוטובוס", "vehicle"], ["🚲", "אופניים", "vehicle"], ["✈️", "מטוס", "vehicle"], ["🚂", "רכבת", "vehicle"],
+  ["🌹", "ורד", "plant", "red"], ["🌻", "חמנייה", "plant", "yellow"], ["🌷", "צבעוני", "plant"], ["🌵", "קקטוס", "plant", "green"], ["🍀", "תלתן", "plant", "green"],
+  ["🔑", "מפתח", "thing"], ["👓", "משקפיים", "thing"], ["☂️", "מטרייה", "thing"], ["⏰", "שעון", "thing"], ["📱", "טלפון", "thing"],
+  ["✂️", "מספריים", "thing"], ["🎈", "בלון", "thing", "red"], ["📕", "ספר", "thing", "red"], ["💡", "נורה", "thing", "yellow"],
+  ["🧦", "גרביים", "thing"], ["👒", "כובע", "thing"], ["🎁", "מתנה", "thing"], ["🕯️", "נר", "thing"], ["🧸", "דובי", "thing"], ["🪴", "עציץ", "thing"]
+].map(([e, n, t, c]) => ({ e, n, t, c: c || null }));
+const itemsOf = (...types) => ITEMS.filter((i) => types.includes(i.t));
+/** timers that a game can clear in one go on stop() */
+function timersKit() {
+  const ts = [];
+  return { later: (f, ms) => { const t = setTimeout(f, ms); ts.push(t); return t; }, clear: () => ts.forEach(clearTimeout) };
+}
+/** fit a .grid of n cells inside its parent element */
+const fitIn = (grid, n, ratio, cols) => fitGrid(grid, n, grid.parentElement.clientWidth, grid.parentElement.clientHeight, ratio || 1, cols);
+/** run a CSS width countdown on a .timebar i element */
+function runBar(bar, ms) {
+  bar.style.transition = "none"; bar.style.width = "100%"; void bar.offsetWidth;
+  bar.style.transition = `width ${ms}ms linear`; bar.style.width = "0%";
+}
 
 // ---------- games registry ----------
 const Games = {
@@ -273,7 +306,7 @@ function runQuiz(stage, api, cfg) {
     api.status(`${cfg.unit || "שאלה"} ${n}/${cfg.rounds}`);
     api.msg(cur.prompt || cfg.prompt || "", "soft");
     qEl.innerHTML = cur.html;
-    oEl.className = "opts" + (cur.opts.length > 4 ? " many" : "") + (cfg.optClass ? " " + cfg.optClass : "");
+    oEl.className = "opts" + (cur.opts.length > 4 ? " many" : "") + ((cur.optClass || cfg.optClass) ? " " + (cur.optClass || cfg.optClass) : "");
     oEl.innerHTML = cur.opts.map((v, i) => `<button class="opt" data-i="${i}">${lab(v)}</button>`).join("");
   }
   oEl.addEventListener("click", (e) => {

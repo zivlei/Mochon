@@ -143,12 +143,13 @@
     const u = Store.user(), cat = CATS[c], games = Games.inCat(c);
     go(`
       <div class="topline">${backBtn("tab", "games", "תחומים")}<h1 class="title sm" style="color:${cat.color}">${cat.icon} ${cat.name}</h1><span class="topline-pad"></span></div>
-      <div class="games-fill" style="--n:${games.length}">
+      <div class="games-fill ${games.length > 4 ? "many" : ""}" style="--n:${games.length}">
         ${games.map((g) => {
           const p = Levels.passed(u, g.id);
+          const cs = Cloud.summary(), cr = cs && cs.games[g.id];
           return `<button class="game" style="--c:${cat.color}" data-act="game" data-arg="${g.id}">
             <span class="g-ic">${g.icon}</span>
-            <span class="g-tx"><span class="g-name">${g.name}</span><span class="g-desc">${g.desc}</span>
+            <span class="g-tx"><span class="g-name">${g.name}${cr && cr.avg ? ` <small class="g-rate">⭐${cr.avg}</small>` : ""}</span><span class="g-desc">${g.desc}</span>
               <span class="g-prog"><i style="width:${(100 * p) / MAX_LEVEL}%"></i></span></span>
             <span class="g-best">רמה<br><b>${Levels.unlocked(u, g.id)}</b></span></button>`;
         }).join("")}
@@ -206,6 +207,7 @@
     const score = clamp(Math.round(res.score), 0, 100);
     const r = { g: g.id, c: g.cat, l: level, s: score, p: Math.round(score * levelMult(level)), t: Math.round(timeSec), d: today(), ts: Date.now() };
     Store.addResult(u, r);
+    Cloud.play(r);
     const unlAfter = Levels.unlocked(u, g.id);
     const { newly, allDone } = Daily.check(u, r);
     Store.save();
@@ -239,6 +241,7 @@
         <div class="res-info">
           <div class="stat-chips">${chips.map(([k, v]) => `<div><small>${k}</small><b>${v}</b></div>`).join("")}</div>
           ${taskLine}
+          ${rateRow(g.id)}
           <div class="res-btns ${canNext ? "three" : ""}">
             ${canNext ? `<button class="btn good" data-act="play" data-arg="${g.id}:${level + 1}">▶ לרמה ${level + 1}</button>` : ""}
             <button class="btn ${canNext ? "secondary" : ""}" data-act="play" data-arg="${g.id}:${level}">🔄 ${passed ? "שוב" : "נסו שוב"}</button>
@@ -247,6 +250,12 @@
           ${allDone ? '<button class="btn good slim" data-act="moreTasks">🎯 עוד משימות להיום</button>' : ""}
         </div>
       </div>`, { tab: "games" });
+  }
+
+  function rateRow(id) {
+    const u = Store.user(), mine = (u.ratings || {})[id] || 0;
+    return `<div class="rate-row" data-game="${id}"><span>${mine ? "הדירוג שלכם:" : "איך היה המשחק?"}</span>
+      <span class="rate-stars">${[1, 2, 3, 4, 5].map((n) => `<button class="rstar ${n <= mine ? "on" : ""}" data-act="rate" data-arg="${id}:${n}" aria-label="${n} כוכבים">★</button>`).join("")}</span></div>`;
   }
 
   // ---------- Tasks tab (one screen) ----------
@@ -281,6 +290,18 @@
       const dt = new Date(x.d + "T12:00:00"), isToday = x.d === today();
       return `<div class="dc ${isToday ? "today" : ""}"><span class="dc-n">${x.n || ""}</span><span class="dc-bar"><i style="height:${(100 * x.n) / max}%"></i></span><span class="dc-d">${isToday ? "היום" : dn[dt.getDay()]}</span></div>`;
     }).join("")}</div>`;
+  }
+  function popularHtml(u) {
+    const mine = {};
+    u.results.forEach((r) => (mine[r.g] = (mine[r.g] || 0) + 1));
+    const top = Object.entries(mine).filter(([g]) => Games.byId[g]).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const cs = Cloud.summary();
+    const ctop = cs ? Object.entries(cs.games).filter(([g]) => Games.byId[g]).sort((a, b) => b[1].plays - a[1].plays).slice(0, 5) : [];
+    const row = (g, right) => `<div class="rr"><span>${Games.byId[g].icon}</span><span>${Games.byId[g].name}</span><b>${right}</b></div>`;
+    return `<h2 class="h2">🏅 המשחקים שלי הכי הרבה</h2>
+      ${top.length ? `<div class="recent">${top.map(([g, n]) => row(g, n + " פעמים" + ((u.ratings || {})[g] ? " · " + "★".repeat(u.ratings[g]) : ""))).join("")}</div>` : '<p class="sub">עוד לא שוחקו משחקים.</p>'}
+      ${ctop.length ? `<h2 class="h2">🌍 הכי פופולריים אצל כולם</h2><p class="sub small">${cs.players} שחקנים · ${cs.totalPlays} משחקים</p>
+        <div class="recent">${ctop.map(([g, x]) => row(g, `${x.plays} משחקים${x.avg ? " · ⭐" + x.avg : ""}`)).join("")}</div>` : ""}`;
   }
   function showStats() {
     const u = Store.user(); if (!u) return showProfiles();
@@ -324,6 +345,7 @@
             ${spark(x.vals, x.c.color)}
           </div>`).join("")}
       </div>
+      ${popularHtml(u)}
       <h2 class="h2">משחקים אחרונים</h2>
       ${rs.length ? `<div class="recent">${rs.slice(-10).reverse().map((r) => {
         const g = Games.byId[r.g];
@@ -334,6 +356,8 @@
         <button class="btn secondary" data-act="sound">${Store.data.sound ? "🔊 צלילים: פועלים" : "🔇 צלילים: כבויים"}</button>
         <button class="btn secondary" data-act="profiles">👥 החלפת שחקן</button>
         <button class="btn secondary" data-act="checkUpdate">🔄 בדיקת עדכונים</button>
+        <button class="btn secondary" data-act="share">${Store.data.share === false ? "📡 שיתוף נתונים אנונימיים: כבוי" : "📡 שיתוף נתונים אנונימיים: פועל"}</button>
+        <p class="center muted small-note">השיתוף שולח רק שם משחק, רמה, ציון, זמן ודירוג, עם קוד מכשיר אקראי – בלי שמות. כך אפשר לדעת אילו משחקים אהובים ושימושיים.</p>
         <p class="center muted ver">גרסה ${APP_VERSION}</p>
         <button class="btn danger" data-act="deleteUser">🗑 מחיקת השחקן ${esc(u.name)}</button>
       </div>`, { tab: "stats", scroll: true });
@@ -403,6 +427,15 @@
     quit() { if (confirm("לצאת מהמשחק? התוצאה של המשחק הזה לא תישמר.")) showHome(); },
     sound() { Store.data.sound = !Store.data.sound; Store.save(); Sound.flip(); showStats(); },
     checkUpdate() { Updater.check(true); },
+    share() { Store.data.share = Store.data.share === false; Store.save(); if (Store.data.share) Cloud.flush(); showStats(); },
+    rate(arg) {
+      const [id, n] = arg.split(":"), u = Store.user();
+      u.ratings = u.ratings || {}; u.ratings[id] = Number(n); Store.save();
+      Cloud.rate(id, Number(n)); Sound.flip();
+      const row = view.querySelector(`.rate-row[data-game="${id}"]`);
+      if (row) row.outerHTML = rateRow(id).replace('class="rate-row"', 'class="rate-row thanks"');
+      toast("תודה על הדירוג! ⭐");
+    },
     moreTasks() { Daily.more(Store.user()); Store.save(); showTasks(); },
     deleteUser() {
       const u = Store.user();
@@ -442,6 +475,7 @@
   }
   // check for updates on start, when the app comes back to the foreground, and every 30 minutes
   setTimeout(() => Updater.check(false), 3000);
+  setTimeout(() => { Cloud.flush(); Cloud.refresh(); }, 2000);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") Updater.check(false); });
   setInterval(() => Updater.check(false), 30 * 60 * 1000);
 })();
