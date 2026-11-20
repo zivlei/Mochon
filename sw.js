@@ -1,5 +1,5 @@
 // מוחון – offline cache. Network first (revalidated) so updates arrive when online; cache as fallback offline.
-const CACHE = "mochon-v4";
+const CACHE = "mochon-v5";
 const FILES = [
   "./", "index.html", "manifest.webmanifest", "icon.svg", "icon-180.png", "icon-192.png", "icon-512.png",
   "css/style.css", "js/core.js", "js/app.js",
@@ -8,7 +8,8 @@ const FILES = [
   "js/games/oddone.js", "js/games/schulte.js",
   "js/games/targets.js", "js/games/traffic.js",
   "js/games/scramble.js", "js/games/oddword.js",
-  "js/games/series.js", "js/games/clock.js"
+  "js/games/series.js", "js/games/clock.js",
+  "js/games/stroop.js", "js/games/fish.js"
 ];
 
 self.addEventListener("install", (e) => {
