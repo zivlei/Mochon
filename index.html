@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#1f5f8b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="משחק הזיכרון">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>משחק הזיכרון</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+  :root {
+    --bg: #fdf8ef;
+    --ink: #1d2733;
+    --muted: #4a5868;
+    --primary: #1f5f8b;
+    --primary-ink: #ffffff;
+    --card-back: #2f7fb5;
+    --card-back-2: #1f5f8b;
+    --card-face: #ffffff;
+    --match: #2e8b57;
+    --border: #c9d3dd;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Assistant", "Arial Hebrew", "Segoe UI", Arial, sans-serif;
+    font-size: 22px;
+    line-height: 1.4;
+    -webkit-user-select: none; user-select: none;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .screen { display: none; min-height: 100%; flex-direction: column; align-items: center; padding: 16px; }
+  .screen.active { display: flex; }
+
+  h1 { font-size: clamp(34px, 8vw, 56px); margin: 24px 0 8px; color: var(--primary); text-align: center; }
+  .sub { font-size: clamp(20px, 4.5vw, 28px); color: var(--muted); text-align: center; margin: 0 0 28px; max-width: 640px; }
+
+  .btn {
+    display: block; width: 100%; max-width: 480px;
+    min-height: 76px; margin: 10px auto; padding: 14px 20px;
+    font: inherit; font-size: clamp(24px, 5.5vw, 32px); font-weight: 700;
+    color: var(--primary-ink); background: var(--primary);
+    border: none; border-radius: 20px; cursor: pointer;
+    box-shadow: 0 4px 0 #154463;
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #154463; }
+  .btn.secondary { background: #fff; color: var(--primary); border: 3px solid var(--primary); box-shadow: none; }
+  .btn .hint { display: block; font-size: 0.65em; font-weight: 400; opacity: .9; }
+
+  /* Game screen */
+  .topbar {
+    width: 100%; max-width: 900px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .stat { font-size: clamp(20px, 4.5vw, 28px); font-weight: 700; white-space: nowrap; }
+  @media (max-width: 400px) { .icon-btn span { display: none; } }
+  .icon-btn {
+    min-width: 64px; min-height: 64px; font-size: 30px; border-radius: 16px;
+    background: #fff; border: 3px solid var(--primary); color: var(--primary); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 14px; font-family: inherit; font-weight: 700;
+  }
+  .icon-btn span { font-size: 20px; }
+  .message { min-height: 1.6em; font-size: clamp(22px, 5vw, 30px); font-weight: 700; color: var(--match); text-align: center; margin: 4px 0 12px; }
+
+  .board {
+    display: grid; gap: clamp(8px, 2vw, 16px);
+    width: 100%; max-width: 900px;
+    grid-template-columns: repeat(var(--cols), 1fr);
+    direction: ltr;
+  }
+  .card {
+    position: relative; aspect-ratio: 3 / 4; perspective: 800px; cursor: pointer;
+    border: none; padding: 0; background: none;
+  }
+  .card-inner {
+    position: absolute; inset: 0; transition: transform .45s ease; transform-style: preserve-3d;
+  }
+  .card.flipped .card-inner, .card.matched .card-inner { transform: rotateY(180deg); }
+  .face {
+    position: absolute; inset: 0; border-radius: 18px; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .back {
+    background: repeating-linear-gradient(45deg, var(--card-back), var(--card-back) 12px, var(--card-back-2) 12px, var(--card-back-2) 24px);
+    border: 4px solid #fff; box-shadow: 0 3px 8px rgba(0,0,0,.18);
+  }
+  .back::after { content: "?"; color: #fff; font-size: clamp(30px, 8vw, 60px); font-weight: 800; opacity: .9; }
+  .front {
+    background: var(--card-face); transform: rotateY(180deg);
+    border: 4px solid var(--border); box-shadow: 0 3px 8px rgba(0,0,0,.12);
+    font-size: var(--emoji-size); line-height: 1;
+  }
+  .card.matched .front { border-color: var(--match); background: #eaf7ef; }
+  .card.matched { animation: pop .4s ease; }
+  @keyframes pop { 50% { transform: scale(1.08); } }
+
+  /* Win */
+  .win-emoji { font-size: 110px; margin-top: 30px; }
+  .win-stats { font-size: clamp(22px, 5vw, 30px); text-align: center; margin: 8px 0 24px; }
+
+  .toggle-row { margin-top: 18px; }
+  footer { margin-top: auto; padding-top: 24px; color: var(--muted); font-size: 18px; text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- Home -->
+<section id="home" class="screen active">
+  <h1>משחק הזיכרון 🧠</h1>
+  <p class="sub">הפכו שני קלפים. אם הם זהים – הם נשארים פתוחים. מצאו את כל הזוגות!<br>אין מגבלת זמן, משחקים בנחת.</p>
+  <button class="btn" data-level="easy">קל<span class="hint">6 זוגות</span></button>
+  <button class="btn" data-level="medium">בינוני<span class="hint">8 זוגות</span></button>
+  <button class="btn" data-level="hard">מאתגר<span class="hint">10 זוגות</span></button>
+  <div class="toggle-row" style="width:100%">
+    <button class="btn secondary" id="soundToggle">🔊 צלילים: פועלים</button>
+  </div>
+  <footer>טיפ: אפשר להוסיף את המשחק למסך הבית דרך "שיתוף" ← "הוסף למסך הבית"</footer>
+</section>
+
+<!-- Game -->
+<section id="game" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" id="homeBtn" aria-label="חזרה לתפריט">🏠 <span>תפריט</span></button>
+    <div class="stat" id="pairsStat">זוגות: 0/6</div>
+    <button class="icon-btn" id="restartBtn" aria-label="משחק חדש">🔄 <span>מחדש</span></button>
+  </div>
+  <div class="message" id="message" aria-live="polite"></div>
+  <div class="board" id="board"></div>
+</section>
+
+<!-- Win -->
+<section id="win" class="screen">
+  <div class="win-emoji">🎉</div>
+  <h1>כל הכבוד!</h1>
+  <p class="win-stats" id="winStats"></p>
+  <button class="btn" id="playAgainBtn">שחקו שוב</button>
+  <button class="btn secondary" id="menuBtn">חזרה לתפריט</button>
+</section>
+
+<script>
+(function () {
+  const SYMBOLS = ["🍎","🌻","🐱","🏠","☀️","🚗","🐟","🎈","🍇","🌳","🐶","⭐","🍌","🦋","☕","🎵"];
+  const LEVELS = {
+    easy:   { pairs: 6,  colsPortrait: 3, colsLandscape: 4 },
+    medium: { pairs: 8,  colsPortrait: 4, colsLandscape: 4 },
+    hard:   { pairs: 10, colsPortrait: 4, colsLandscape: 5 }
+  };
+  const PRAISE = ["יפה מאוד!", "מצוין!", "כל הכבוד!", "נהדר!", "איזה זיכרון!", "מעולה!"];
+
+  const $ = (id) => document.getElementById(id);
+  const board = $("board");
+  let level = "easy", first = null, second = null, lock = false, matched = 0, tries = 0;
+
+  // ---- Sound (gentle tones via Web Audio, no files) ----
+  let soundOn = true, ctx = null;
+  try { soundOn = localStorage.getItem("memSound") !== "off"; } catch (e) {}
+  function tone(freq, dur, delay) {
+    if (!soundOn) return;
+    try {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      const t = ctx.currentTime + (delay || 0);
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine"; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + dur + 0.05);
+    } catch (e) {}
+  }
+  const sFlip = () => tone(520, 0.12);
+  const sMatch = () => { tone(660, 0.18); tone(880, 0.25, 0.15); };
+  const sWin = () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.3, i * 0.18));
+  function updateSoundBtn() { $("soundToggle").textContent = soundOn ? "🔊 צלילים: פועלים" : "🔇 צלילים: כבויים"; }
+  $("soundToggle").onclick = () => {
+    soundOn = !soundOn;
+    try { localStorage.setItem("memSound", soundOn ? "on" : "off"); } catch (e) {}
+    updateSoundBtn(); sFlip();
+  };
+  updateSoundBtn();
+
+  // ---- Screens ----
+  function show(id) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === id));
+    window.scrollTo(0, 0);
+  }
+
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+
+  function layout() {
+    const cfg = LEVELS[level];
+    const landscape = window.innerWidth > window.innerHeight;
+    const cols = landscape ? cfg.colsLandscape + (cfg.pairs * 2 > 12 ? 1 : 0) : cfg.colsPortrait;
+    const rows = Math.ceil(cfg.pairs * 2 / cols);
+    // Fit board to available height so no scrolling is needed
+    const availH = window.innerHeight - board.getBoundingClientRect().top - 24;
+    const availW = Math.min(window.innerWidth - 32, 900);
+    const gap = Math.max(8, Math.min(16, window.innerWidth * 0.02));
+    const cardWByH = ((availH - gap * (rows - 1)) / rows) * 0.75;
+    const cardWByW = (availW - gap * (cols - 1)) / cols;
+    const cardW = Math.max(60, Math.min(cardWByH, cardWByW));
+    board.style.setProperty("--cols", cols);
+    board.style.maxWidth = (cardW * cols + gap * (cols - 1)) + "px";
+    board.style.setProperty("--emoji-size", Math.round(cardW * 0.58) + "px");
+  }
+
+  function newGame() {
+    const cfg = LEVELS[level];
+    first = second = null; lock = false; matched = 0; tries = 0;
+    $("message").textContent = "";
+    updateStat();
+    const deck = shuffle(shuffle(SYMBOLS.slice()).slice(0, cfg.pairs).flatMap(s => [s, s]));
+    board.innerHTML = "";
+    deck.forEach((sym) => {
+      const c = document.createElement("button");
+      c.className = "card"; c.dataset.sym = sym; c.setAttribute("aria-label", "קלף סגור");
+      c.innerHTML = '<div class="card-inner"><div class="face back"></div><div class="face front">' + sym + '</div></div>';
+      c.addEventListener("click", () => flip(c));
+      board.appendChild(c);
+    });
+    show("game");
+    layout();
+  }
+
+  function updateStat() { $("pairsStat").textContent = "זוגות: " + matched + "/" + LEVELS[level].pairs; }
+
+  function flip(c) {
+    if (lock || c === first || c.classList.contains("matched") || c.classList.contains("flipped")) return;
+    c.classList.add("flipped"); c.setAttribute("aria-label", c.dataset.sym);
+    sFlip();
+    if (!first) { first = c; $("message").textContent = ""; return; }
+    second = c; tries++; lock = true;
+    if (first.dataset.sym === second.dataset.sym) {
+      setTimeout(() => {
+        first.classList.add("matched"); second.classList.add("matched");
+        matched++; updateStat(); sMatch();
+        $("message").style.color = "var(--match)";
+        $("message").textContent = PRAISE[Math.floor(Math.random() * PRAISE.length)];
+        first = second = null; lock = false;
+        if (matched === LEVELS[level].pairs) setTimeout(win, 900);
+      }, 350);
+    } else {
+      $("message").style.color = "var(--muted)";
+      $("message").textContent = "לא זוג – ננסה שוב";
+      // Give plenty of time to look at both cards
+      setTimeout(() => {
+        [first, second].forEach(x => { x.classList.remove("flipped"); x.setAttribute("aria-label", "קלף סגור"); });
+        first = second = null; lock = false;
+      }, 1600);
+    }
+  }
+
+  function win() {
+    sWin();
+    $("winStats").textContent = "מצאת את כל " + LEVELS[level].pairs + " הזוגות ב-" + tries + " ניסיונות.";
+    show("win");
+  }
+
+  document.querySelectorAll("[data-level]").forEach(b => b.onclick = () => { level = b.dataset.level; newGame(); });
+  $("homeBtn").onclick = () => show("home");
+  $("menuBtn").onclick = () => show("home");
+  $("restartBtn").onclick = newGame;
+  $("playAgainBtn").onclick = newGame;
+  window.addEventListener("resize", () => { if ($("game").classList.contains("active")) layout(); });
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  }
+})();
+</script>
+</body>
+</html>
