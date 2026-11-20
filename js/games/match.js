@@ -1,12 +1,13 @@
-/* זיכרון – זוגות: score = finishing bonus + accuracy (tries vs pairs) + speed */
+/* זיכרון – זוגות. Levels: 3→12 pairs, shorter look time. Score = finish bonus + accuracy (tries) + speed */
 (function () {
   const SYMBOLS = ["🍎", "🌻", "🐱", "🏠", "☀️", "🚗", "🐟", "🎈", "🍇", "🌳", "🐶", "⭐", "🍌", "🦋", "☕", "🎵"];
   Games.register({
     id: "match", cat: "memory", name: "זוגות", icon: "🃏",
     desc: "מצאו זוגות של קלפים זהים",
-    how: "הפכו שני קלפים בכל פעם. אם הם זהים – הם נשארים פתוחים. נסו לזכור איפה כל תמונה! הניקוד לפי מספר הניסיונות והזמן.",
+    how: "הפכו שני קלפים בכל פעם. אם הם זהים – הם נשארים פתוחים. נסו לזכור איפה כל תמונה! ברמות גבוהות יש יותר קלפים והם נסגרים מהר יותר.",
     start(stage, level, api) {
-      const pairs = [0, 6, 8, 10][level];
+      const pairs = Math.min(12, 3 + Math.floor((level - 1) / 3));
+      const lookMs = Math.round(lerp(1800, 950, level));
       const deck = shuffle(shuffle(SYMBOLS.slice()).slice(0, pairs).flatMap((s) => [s, s]));
       const board = document.createElement("div");
       board.className = "grid"; stage.appendChild(board);
@@ -19,7 +20,7 @@
       deck.forEach((sym) => {
         const c = document.createElement("button");
         c.className = "card"; c.dataset.sym = sym; c.setAttribute("aria-label", "קלף סגור");
-        c.innerHTML = '<div class="card-inner"><div class="face back"></div><div class="face front">' + sym + "</div></div>";
+        c.innerHTML = '<div class="card-inner"><div class="face cback"></div><div class="face front">' + sym + "</div></div>";
         c.addEventListener("click", () => flip(c));
         board.appendChild(c);
       });
@@ -37,14 +38,13 @@
           }, 350);
         } else {
           api.msg("לא זוג – ננסה שוב", "soft");
-          later(() => { [a, b].forEach((x) => { x.classList.remove("flipped"); x.setAttribute("aria-label", "קלף סגור"); }); lock = false; }, 1600);
+          later(() => { [a, b].forEach((x) => { x.classList.remove("flipped"); x.setAttribute("aria-label", "קלף סגור"); }); lock = false; }, lookMs);
         }
       }
       function done() {
         const time = (Date.now() - t0) / 1000;
         const q = clamp((pairs * 2.5 - tries) / (pairs * 1.5), 0, 1);
-        const sp = speedFactor(time, pairs * 7);
-        api.finish({ score: Math.round(20 + 55 * q + 25 * sp), stats: [["ניסיונות", tries], ["זוגות", pairs]] });
+        api.finish({ score: Math.round(20 + 55 * q + 25 * speedFactor(time, pairs * lerp(7, 5, level))), stats: [["ניסיונות", tries], ["זוגות", pairs]] });
       }
       function layout() {
         const r = stage.getBoundingClientRect();

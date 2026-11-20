@@ -1,69 +1,54 @@
-/* חשבון – תרגילים: score = 80% correctness + 20% speed (speed only counts on correct answers) */
+/* חשבון – תרגילים. 30 levels from small additions up to multi-step and division. */
 (function () {
-  const QN = 10;
-  function gen(level) {
-    let a, b, op;
-    if (level === 1) {
-      if (Math.random() < 0.6) { op = "+"; a = rand(1, 10); b = rand(1, 10); }
-      else { op = "-"; a = rand(5, 15); b = rand(1, Math.min(9, a)); }
-    } else if (level === 2) {
-      if (Math.random() < 0.5) { op = "+"; a = rand(10, 40); b = rand(5, 30); }
-      else { op = "-"; a = rand(20, 60); b = rand(5, a - 5); }
+  function gen(l) {
+    let text, ans;
+    const two = (a, op, b) => { text = `${a} ${op} ${b}`; ans = op === "+" ? a + b : op === "-" ? a - b : op === "×" ? a * b : a / b; };
+    if (l <= 5) { const m = 4 + l * 3; two(rand(1, m), "+", rand(1, m)); }
+    else if (l <= 10) {
+      const m = 15 + (l - 5) * 7;
+      if (Math.random() < 0.5) two(rand(5, m), "+", rand(2, m));
+      else { const a = rand(10, m + 10); two(a, "-", rand(2, a - 1)); }
+    } else if (l <= 15) {
+      const m = 50 + (l - 10) * 10;
+      if (Math.random() < 0.5) two(rand(15, m), "+", rand(10, m));
+      else { const a = rand(30, m + 20); two(a, "-", rand(10, a - 5)); }
+    } else if (l <= 20) {
+      const t = 3 + (l - 16) * 2; // tables grow up to 10
+      if (Math.random() < 0.55) two(rand(2, Math.min(10, t)), "×", rand(2, 10));
+      else if (Math.random() < 0.5) two(rand(40, 150), "+", rand(20, 120));
+      else { const a = rand(80, 200); two(a, "-", rand(20, a - 10)); }
+    } else if (l <= 25) {
+      const r = Math.random();
+      if (r < 0.3) two(rand(3, 12), "×", rand(3, 12));
+      else if (r < 0.6) { const b = rand(2, 10), k = rand(2, 10 + (l - 21) * 2); two(b * k, "÷", b); }
+      else if (r < 0.8) two(rand(120, 500), "+", rand(80, 400));
+      else { const a = rand(250, 600); two(a, "-", rand(60, a - 30)); }
     } else {
       const r = Math.random();
-      if (r < 0.35) { op = "×"; a = rand(2, 10); b = rand(2, 10); }
-      else if (r < 0.7) { op = "+"; a = rand(25, 80); b = rand(15, 60); }
-      else { op = "-"; a = rand(40, 100); b = rand(10, a - 10); }
+      if (r < 0.35) { const a = rand(20, 120), b = rand(10, 90), c = rand(5, a + b - 5); text = `${a} + ${b} − ${c}`; ans = a + b - c; }
+      else if (r < 0.65) { const a = rand(3, 12), b = rand(3, 12), c = rand(5, 60); text = `${a} × ${b} + ${c}`; ans = a * b + c; }
+      else if (r < 0.85) two(rand(11, 25), "×", rand(3, 9));
+      else { const b = rand(3, 12), k = rand(6, 25); two(b * k, "÷", b); }
     }
-    const ans = op === "+" ? a + b : op === "-" ? a - b : a * b;
-    const opts = new Set([ans]);
-    const deltas = [1, 2, 3, 10, -1, -2, -3, -10, 5, -5];
-    while (opts.size < 4) { const v = ans + deltas[rand(0, deltas.length - 1)]; if (v >= 0) opts.add(v); }
-    return { text: `${a} ${op} ${b} = ?`, ans, opts: shuffle([...opts]) };
+    return { text: text.replace(/-/g, "−"), ans };
   }
 
   Games.register({
     id: "math", cat: "math", name: "תרגילים", icon: "➕",
     desc: "פתרו תרגילי חשבון ובחרו את התשובה",
-    how: `${QN} תרגילים. בחרו את התשובה הנכונה מבין ארבע אפשרויות. הניקוד לפי מספר התשובות הנכונות, ומעט גם לפי המהירות.`,
+    how: "10 תרגילים. בחרו את התשובה הנכונה. ברמות הראשונות חיבור, אחר כך חיסור, כפל, חילוק ותרגילים בכמה שלבים.",
     start(stage, level, api) {
-      const targetT = [0, 8, 10, 12][level];
-      stage.innerHTML = '<div class="math"><div class="math-q" dir="ltr"></div><div class="opts"></div></div>';
-      const qEl = $(".math-q", stage), oEl = $(".opts", stage);
-      const timers = [], later = (f, ms) => timers.push(setTimeout(f, ms));
-      let n = 0, correct = 0, times = [], q, shown, lock = false;
-
-      function next() {
-        if (n >= QN) return finish();
-        n++; q = gen(level); lock = false; shown = Date.now();
-        api.status(`תרגיל ${n}/${QN}`); api.msg("", "");
-        qEl.textContent = q.text;
-        oEl.innerHTML = q.opts.map((v) => `<button class="opt" data-v="${v}">${v}</button>`).join("");
-      }
-      oEl.addEventListener("click", (e) => {
-        const b = e.target.closest(".opt"); if (!b || lock) return;
-        lock = true;
-        const v = Number(b.dataset.v), ok = v === q.ans;
-        if (ok) { correct++; times.push((Date.now() - shown) / 1000); b.classList.add("right"); api.sound.good(); api.msg(praise(), "good"); }
-        else {
-          b.classList.add("wrong"); api.sound.bad();
-          oEl.querySelector(`[data-v="${q.ans}"]`).classList.add("right");
-          api.msg(`התשובה הנכונה: ${q.ans}`, "soft");
+      return runQuiz(stage, api, {
+        rounds: 10, targetT: lerp(8, 16, level), unit: "תרגיל",
+        make() {
+          const q = gen(level);
+          return {
+            html: `<div class="big-q" dir="ltr">${q.text} = <span class="qmark">?</span></div>`,
+            ans: q.ans, opts: numOptions(q.ans, 4),
+            reveal: (el) => { el.querySelector(".qmark").textContent = q.ans; }
+          };
         }
-        qEl.textContent = q.text.replace("?", q.ans);
-        later(next, ok ? 900 : 1900);
       });
-      function finish() {
-        const acc = correct / QN;
-        const at = avg(times);
-        const sp = at === null ? 0 : speedFactor(at, targetT);
-        api.finish({
-          score: Math.round(80 * acc + 20 * sp * acc),
-          stats: [["תשובות נכונות", `${correct} מתוך ${QN}`], ["זמן ממוצע לתשובה נכונה", at === null ? "—" : at.toFixed(1) + " שניות"]]
-        });
-      }
-      next();
-      return { stop() { timers.forEach(clearTimeout); } };
     }
   });
 })();

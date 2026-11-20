@@ -1,8 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#1f5f8b"/>
-  <rect x="70" y="110" width="170" height="230" rx="28" fill="#ffffff" transform="rotate(-8 155 225)"/>
-  <rect x="272" y="110" width="170" height="230" rx="28" fill="#ffffff" transform="rotate(8 357 225)"/>
-  <text x="155" y="262" font-size="120" text-anchor="middle" transform="rotate(-8 155 225)">🍎</text>
-  <text x="357" y="262" font-size="120" text-anchor="middle" transform="rotate(8 357 225)">🍎</text>
-  <text x="256" y="440" font-size="64" font-family="Arial" font-weight="700" fill="#ffffff" text-anchor="middle">מוחון</text>
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a8fc7"/><stop offset="1" stop-color="#174a6e"/></linearGradient></defs>
+  <rect width="512" height="512" rx="110" fill="url(#g)"/>
+  <circle cx="256" cy="212" r="158" fill="#fdf8ef"/>
+  <text x="256" y="222" font-size="215" text-anchor="middle" dominant-baseline="central">🧠</text>
+  <text x="256" y="438" font-size="96" font-family="Arial" font-weight="700" fill="#ffffff" text-anchor="middle" dominant-baseline="central">מוחון</text>
 </svg>

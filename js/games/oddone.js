@@ -1,4 +1,4 @@
-/* ריכוז – מצאו את השונה: score = 65% accuracy + 35% speed */
+/* ריכוז – מצאו את השונה. Levels: grid 3x3→6x6, pictures become more similar. Score = 65% accuracy + 35% speed */
 (function () {
   const PAIRS = {
     1: [["🍎", "🍌"], ["🐱", "🐟"], ["⭐", "🌙"], ["🚗", "🏠"], ["🌻", "☕"], ["🎈", "🍇"], ["🐶", "🌳"]],
@@ -9,9 +9,11 @@
   Games.register({
     id: "oddone", cat: "focus", name: "מצאו את השונה", icon: "🔍",
     desc: "מצאו את התמונה היחידה שאינה כמו האחרות",
-    how: `${ROUNDS} סיבובים. בכל סיבוב כל התמונות זהות חוץ מאחת – לחצו עליה. הניקוד לפי הדיוק והמהירות.`,
+    how: `${ROUNDS} סיבובים. בכל סיבוב כל התמונות זהות חוץ מאחת – לחצו עליה. ברמות גבוהות יש יותר תמונות והן דומות יותר.`,
     start(stage, level, api) {
-      const cols = [0, 3, 4, 5][level], n = cols * cols, targetT = [0, 4, 6, 8][level];
+      const cols = level <= 6 ? 3 : level <= 14 ? 4 : level <= 22 ? 5 : 6, n = cols * cols;
+      const set = PAIRS[level <= 10 ? 1 : level <= 20 ? 2 : 3];
+      const targetT = lerp(4, 9, level);
       const grid = document.createElement("div");
       grid.className = "grid"; stage.appendChild(grid);
       const timers = [], later = (f, ms) => timers.push(setTimeout(f, ms));
@@ -22,7 +24,7 @@
       function next() {
         if (round >= ROUNDS) return finish();
         round++; lock = false; api.status(`סיבוב ${round}/${ROUNDS}`);
-        const pair = PAIRS[level][rand(0, PAIRS[level].length - 1)];
+        const pair = pick(set);
         const [main, odd] = Math.random() < 0.5 ? pair : [pair[1], pair[0]];
         oddIdx = rand(0, n - 1);
         grid.innerHTML = "";
@@ -45,8 +47,7 @@
         }
       });
       function finish() {
-        const acc = ROUNDS / (ROUNDS + wrong);
-        const at = avg(times);
+        const acc = ROUNDS / (ROUNDS + wrong), at = avg(times);
         api.finish({
           score: Math.round(65 * acc + 35 * speedFactor(at, targetT) * acc),
           stats: [["טעויות", wrong], ["זמן ממוצע למציאה", at.toFixed(1) + " שניות"]]

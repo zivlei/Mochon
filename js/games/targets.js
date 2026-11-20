@@ -1,49 +1,51 @@
-/* קואורדינציה – בועות: score = 60% hits + 20% precision (few stray taps) + 20% reaction speed */
+/* קואורדינציה – בועות. Levels: bubbles shrink and vanish faster; from level 11 red "do not touch" bubbles appear.
+   Score = hits + precision + reaction speed + avoiding red bubbles */
 (function () {
   const ICONS = ["🎈", "⭐", "🌸", "🍎", "🐞", "🦋"];
   const TOTAL = 15;
   Games.register({
     id: "targets", cat: "coord", name: "בועות", icon: "🫧",
     desc: "געו בבועות לפני שהן נעלמות",
-    how: `${TOTAL} בועות יופיעו בזו אחר זו במקומות שונים. געו בכל בועה לפני שהיא נעלמת. הניקוד לפי הפגיעות, הדיוק ומהירות התגובה.`,
+    how: `${TOTAL} בועות כחולות יופיעו בזו אחר זו. געו בכל בועה לפני שהיא נעלמת. מרמה 11 יופיעו גם בועות אדומות עם ✋ – בהן אסור לגעת!`,
     start(stage, level, api) {
-      const life = [0, 3200, 2400, 1700][level], sizeF = [0, 0.3, 0.23, 0.17][level];
+      const life = Math.round(lerp(3500, 1150, level)), sizeF = lerp(0.32, 0.13, level);
+      const decoyP = level >= 11 ? lerp(0.15, 0.35, level) : 0;
       stage.classList.add("arena");
       const timers = [], later = (f, ms) => timers.push(setTimeout(f, ms));
-      let shown = 0, hits = 0, stray = 0, bubble = null, bornAt = 0, lifeTimer = null;
+      let good = 0, hits = 0, stray = 0, decoys = 0, decoyHits = 0, bubble = null, bornAt = 0;
       const rts = [];
       const upd = () => api.status(`פגיעות: ${hits}/${TOTAL}`);
       upd(); api.msg("מתחילים בעוד רגע...", "soft");
 
-      stage.addEventListener("pointerdown", (e) => {
-        if (e.target.closest(".bubble")) return;
-        if (bubble) stray++;
-      });
+      stage.addEventListener("pointerdown", (e) => { if (!e.target.closest(".bubble") && bubble) stray++; });
       function spawn() {
-        if (shown >= TOTAL) return later(finish, 500);
-        shown++;
+        if (good >= TOTAL) return later(finish, 500);
+        const isDecoy = good > 0 && Math.random() < decoyP;
+        if (isDecoy) decoys++; else good++;
         const r = stage.getBoundingClientRect();
-        const size = Math.round(clamp(Math.min(r.width, r.height) * sizeF, 64, 220));
+        const size = Math.round(clamp(Math.min(r.width, r.height) * sizeF, 60, 230));
         const b = document.createElement("button");
-        b.className = "bubble"; b.textContent = ICONS[rand(0, ICONS.length - 1)];
+        b.className = "bubble" + (isDecoy ? " decoy" : ""); b.textContent = isDecoy ? "✋" : pick(ICONS);
         b.style.width = b.style.height = size + "px";
         b.style.fontSize = Math.round(size * 0.5) + "px";
         b.style.left = rand(0, Math.max(0, Math.floor(r.width - size))) + "px";
         b.style.top = rand(0, Math.max(0, Math.floor(r.height - size))) + "px";
+        let lifeTimer;
         b.addEventListener("pointerdown", (e) => {
           e.preventDefault();
           if (b !== bubble) return;
-          clearTimeout(lifeTimer);
-          hits++; rts.push(Date.now() - bornAt); upd(); api.sound.good(); api.msg(praise(), "good");
-          b.classList.add("pop"); bubble = null;
-          later(() => b.remove(), 300); later(spawn, 450);
+          clearTimeout(lifeTimer); bubble = null;
+          if (isDecoy) { decoyHits++; api.sound.bad(); api.msg("אופס – בבועה אדומה לא נוגעים", "soft"); }
+          else { hits++; rts.push(Date.now() - bornAt); upd(); api.sound.good(); api.msg(praise(), "good"); }
+          b.classList.add("pop"); later(() => b.remove(), 300); later(spawn, 450);
         });
         stage.appendChild(b); bubble = b; bornAt = Date.now();
         lifeTimer = setTimeout(() => {
           if (bubble !== b) return;
-          bubble = null; b.classList.add("gone"); api.msg("פספוס – הבאה!", "soft");
+          bubble = null; b.classList.add("gone");
+          api.msg(isDecoy ? "יפה שלא נגעתם!" : "פספוס – הבאה!", isDecoy ? "good" : "soft");
           later(() => b.remove(), 300); later(spawn, 500);
-        }, life);
+        }, isDecoy ? life * 0.9 : life);
         timers.push(lifeTimer);
       }
       function finish() {
@@ -51,10 +53,10 @@
         const precision = hits ? hits / (hits + stray) : 0;
         const art = avg(rts);
         const speed = art === null ? 0 : clamp((life - art) / (life * 0.6), 0, 1);
-        api.finish({
-          score: Math.round(100 * (0.6 * hitRate + 0.2 * precision + 0.2 * speed * hitRate)),
-          stats: [["פגיעות", `${hits} מתוך ${TOTAL}`], ["נגיעות מחוץ לבועה", stray], ["זמן תגובה ממוצע", art === null ? "—" : (art / 1000).toFixed(2) + " שניות"]]
-        });
+        const avoid = decoys ? 1 - decoyHits / decoys : 1;
+        const stats = [["פגיעות", `${hits} מתוך ${TOTAL}`], ["נגיעות מחוץ לבועה", stray], ["זמן תגובה ממוצע", art === null ? "—" : (art / 1000).toFixed(2) + " שניות"]];
+        if (decoys) stats.push(["בועות אדומות שנמנעתם מהן", `${decoys - decoyHits} מתוך ${decoys}`]);
+        api.finish({ score: Math.round(100 * (0.55 * hitRate + 0.15 * precision + 0.15 * speed * hitRate + 0.15 * avoid * hitRate)), stats });
       }
       later(spawn, 1500);
       return { stop() { timers.forEach(clearTimeout); } };
