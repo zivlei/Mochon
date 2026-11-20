@@ -1,5 +1,5 @@
 // מוחון – offline cache. Network first (revalidated) so updates arrive when online; cache as fallback offline.
-const CACHE = "mochon-v3";
+const CACHE = "mochon-v4";
 const FILES = [
   "./", "index.html", "manifest.webmanifest", "icon.svg", "icon-180.png", "icon-192.png", "icon-512.png",
   "css/style.css", "js/core.js", "js/app.js",

@@ -1,26 +1,59 @@
-/* מוחון – screens, navigation and in-app updates */
+/* מוחון – screens, tab navigation and in-app updates.
+   Layout rule: every screen fits one screen without scrolling, except Stats (and profile lists when there are many players). */
 "use strict";
 (function () {
   const view = $("#view");
+  const tabbar = $("#tabbar");
   const AVATARS = ["👵", "👴", "🧓", "👩‍🦳", "👨‍🦳", "👩", "👨", "🌸", "🌻", "🐱", "🐶", "⭐"];
   let running = null, newAvatar = AVATARS[0];
 
   function stopGame() {
     if (running) { try { running.handle && running.handle.stop && running.handle.stop(); } catch (e) {} running = null; }
-    view.classList.remove("playing"); document.body.classList.remove("in-game");
+    view.classList.remove("playing");
   }
-  function go(html, inGame) {
+  /** opts: { tab, scroll, noTabs, inGame } */
+  function go(html, opts) {
+    opts = opts || {};
     stopGame();
-    const bar = $("#update-bar"); if (bar && inGame) bar.remove();
+    closeModal();
+    const bar = $("#update-bar"); if (bar && opts.inGame) bar.remove();
+    document.body.classList.toggle("no-tabs", !!(opts.noTabs || opts.inGame));
+    document.body.classList.toggle("in-game", !!opts.inGame);
+    view.classList.toggle("scroll", !!opts.scroll);
     view.innerHTML = html;
+    view.scrollTop = 0;
     view.classList.remove("enter"); void view.offsetWidth; view.classList.add("enter");
-    window.scrollTo(0, 0);
-    if (!inGame) Updater.maybeShow();
+    tabbar.querySelectorAll("[data-tab]").forEach((b) => b.classList.toggle("active", b.dataset.tab === opts.tab));
+    updateBadge();
+    if (!opts.inGame) Updater.maybeShow();
+  }
+  function updateBadge() {
+    const u = Store.user(), el = $("#taskBadge");
+    if (!u) { el.hidden = true; return; }
+    const left = Daily.ensure(u).tasks.filter((t) => !t.done).length;
+    el.hidden = !left; el.textContent = left;
   }
 
   const backBtn = (act, arg, label) => `<button class="backbtn" data-act="${act}" ${arg ? `data-arg="${arg}"` : ""}>→ ${label || "חזרה"}</button>`;
   const stars = (s) => (s >= 90 ? 3 : s >= 70 ? 2 : s >= PASS_SCORE ? 1 : 0);
   const starStr = (s) => "★".repeat(stars(s)) + "☆".repeat(3 - stars(s));
+  const taskBtn = (t, i) => `
+    <button class="task ${t.done ? "done" : ""}" data-act="task" data-arg="${i}" style="--c:${CATS[t.cat].color}">
+      <span class="task-ic">${t.done ? "✅" : CATS[t.cat].icon}</span>
+      <span class="task-tx">${t.focus ? '<span class="tag">💪 לחיזוק</span>' : ""}<span class="task-cat">${CATS[t.cat].name}</span>${esc(t.text)}</span>
+      ${t.done ? "" : '<span class="task-go">◀</span>'}
+    </button>`;
+
+  // ---------- modal ----------
+  function openModal(html) {
+    closeModal();
+    const m = document.createElement("div");
+    m.className = "modal"; m.id = "modal";
+    m.innerHTML = `<div class="modal-box" role="dialog">${html}<button class="btn" data-close>הבנתי 👍</button></div>`;
+    m.addEventListener("click", (e) => { if (e.target === m || e.target.closest("[data-close]")) closeModal(); });
+    document.body.appendChild(m);
+  }
+  function closeModal() { const m = $("#modal"); if (m) m.remove(); }
 
   // ---------- Profiles ----------
   function showProfiles() {
@@ -33,7 +66,8 @@
         ${us.map((u) => `<button class="profile" data-act="pickUser" data-arg="${u.id}"><span class="av">${u.avatar}</span><span class="pname">${esc(u.name)}</span></button>`).join("")}
         <button class="profile add" data-act="newUser"><span class="av">➕</span><span class="pname">שחקן חדש</span></button>
       </div>
-      <p class="foot">טיפ: באייפד או באייפון – פתחו ב-Safari, לחצו "שיתוף" ואז "הוסף למסך הבית".<br><span class="ver">גרסה ${APP_VERSION}</span></p>`);
+      <p class="foot">טיפ: באייפד או באייפון – פתחו ב-Safari, לחצו "שיתוף" ואז "הוסף למסך הבית".<br><span class="ver">גרסה ${APP_VERSION}</span></p>`,
+      { noTabs: true, scroll: true });
   }
 
   function showNewUser() {
@@ -48,59 +82,69 @@
       <div class="avatars">${AVATARS.map((a, i) => `<button class="avatar ${i === 0 ? "sel" : ""}" data-act="avatar" data-arg="${a}">${a}</button>`).join("")}</div>
       <p class="err" id="nu-err"></p>
       <button class="btn" data-act="saveUser">✔ שמירה והתחלה</button>
-      </div>`);
+      </div>`, { noTabs: true, scroll: true });
   }
 
-  // ---------- Home ----------
+  // ---------- Home (one screen) ----------
   function showHome() {
     const u = Store.user(); if (!u) return showProfiles();
     const d = Daily.ensure(u); Store.save();
     const doneN = d.tasks.filter((t) => t.done).length;
-    const streak = Stats.streak(u);
+    const nextIdx = d.tasks.findIndex((t) => !t.done);
+    const todayPts = u.results.filter((r) => r.d === today()).reduce((s, r) => s + r.p, 0);
+    const last = u.results.length ? u.results[u.results.length - 1] : null;
+    const lastGame = last && Games.byId[last.g];
+    const weak = Object.keys(CATS).sort((a, b) => Daily.weakness(u, b) - Daily.weakness(u, a))[0];
+
+    const taskCard = nextIdx >= 0
+      ? `<div class="card-h"><span class="t-one">📅 המשימה הבאה</span><span class="t-all">📅 המשימות של היום</span><span class="badge">${doneN}/${d.tasks.length}</span></div>${d.tasks.map((t, i) => i === nextIdx ? taskBtn(t, i) : taskBtn(t, i).replace("class=\"task ", "class=\"task t-extra ")).join("")}`
+      : `<div class="card-h"><span>📅 המשימות של היום</span><span class="badge good">${doneN}/${d.tasks.length}</span></div>
+         <p class="allgood">🏆 כל המשימות הושלמו!</p><button class="btn good" data-act="moreTasks">🎯 עוד משימות להיום</button>`;
+
     go(`
       <div class="hello">
         <span class="av big">${u.avatar}</span>
-        <div><div class="hname">שלום, ${esc(u.name)}!</div>
-        <div class="hsub">${streak ? `🔥 ${streak} ${streak === 1 ? "יום" : "ימים"} ברצף · ` : ""}${Stats.gamesToday(u) ? `🎮 היום שיחקתם ${Stats.gamesToday(u)} משחקים` : "בואו נתחיל לשחק היום"}</div></div>
+        <div class="hello-tx"><div class="hname">שלום, ${esc(u.name)}!</div></div>
         <button class="chip" data-act="profiles">החלפת שחקן</button>
       </div>
-      <div class="home-grid">
-        <section class="panel">
-          <div class="panel-h"><h2 class="h2">📅 המשימות של היום${d.round > 1 ? ` <small class="muted">(סבב ${d.round})</small>` : ""}</h2><span class="badge">${doneN}/${d.tasks.length}</span></div>
-          <div class="tasks">
-            ${d.tasks.map((t, i) => `
-              <button class="task ${t.done ? "done" : ""}" data-act="task" data-arg="${i}" style="--c:${CATS[t.cat].color}">
-                <span class="task-ic">${t.done ? "✅" : CATS[t.cat].icon}</span>
-                <span class="task-tx">${t.focus ? '<span class="tag">💪 לחיזוק</span>' : ""}<span class="task-cat">${CATS[t.cat].name}</span>${esc(t.text)}</span>
-                ${t.done ? "" : '<span class="task-go">◀</span>'}
-              </button>`).join("")}
-          </div>
-          ${d.bonus ? '<p class="allgood">🏆 כל המשימות הושלמו – כל הכבוד!</p><button class="btn good" data-act="moreTasks">🎯 עוד משימות להיום</button>' : ""}
-          <button class="btn ${d.bonus ? "secondary" : ""}" data-act="progress">📈 ההתקדמות שלי</button>
-        </section>
-        <section>
-          <h2 class="h2">בחרו תחום</h2>
-          <div class="cats">
-            ${Object.entries(CATS).map(([k, c]) => {
-              const games = Games.inCat(k).length, passed = Stats.catPassed(u, k);
-              return `<button class="cat" style="--c:${c.color}" data-act="cat" data-arg="${k}">
-                <span class="cat-ic">${c.icon}</span><span class="cat-name">${c.name}</span>
-                <span class="cat-sc">${passed ? `${passed}/${games * MAX_LEVEL} רמות` : `${games} משחקים`}</span></button>`;
-            }).join("")}
-          </div>
-        </section>
+      <div class="chips">
+        <div class="chipstat"><span>🔥</span><b>${Stats.streak(u)}</b><small>ימים ברצף</small></div>
+        <div class="chipstat"><span>🎮</span><b>${Stats.gamesToday(u)}</b><small>משחקים היום</small></div>
+        <div class="chipstat"><span>⭐</span><b>${todayPts}</b><small>נקודות היום</small></div>
       </div>
-      <button class="btn secondary" data-act="sound">${Store.data.sound ? "🔊 צלילים: פועלים" : "🔇 צלילים: כבויים"}</button>`);
+      <div class="home-main">
+        <section class="hcard task-card">${taskCard}</section>
+        ${lastGame
+          ? `<button class="bigtile" style="--c:${CATS[lastGame.cat].color}" data-act="play" data-arg="${lastGame.id}:${Levels.unlocked(u, lastGame.id)}">
+               <span class="bt-ic">${lastGame.icon}</span><span class="bt-tx"><small>להמשיך לשחק</small><b>${lastGame.name} · רמה ${Levels.unlocked(u, lastGame.id)}</b></span><span class="bt-go">▶</span></button>`
+          : `<button class="bigtile" style="--c:var(--good)" data-act="tab" data-arg="games">
+               <span class="bt-ic">🎮</span><span class="bt-tx"><small>בואו נתחיל</small><b>בחרו משחק</b></span><span class="bt-go">▶</span></button>`}
+        <button class="bigtile" style="--c:${CATS[weak].color}" data-act="cat" data-arg="${weak}">
+          <span class="bt-ic">${CATS[weak].icon}</span><span class="bt-tx"><small>💪 כדאי לתרגל</small><b>${CATS[weak].name}</b></span><span class="bt-go">▶</span></button>
+      </div>`, { tab: "home" });
   }
 
-  // ---------- Category ----------
-  function showCat(c) {
-    const u = Store.user(), cat = CATS[c];
+  // ---------- Games tab: categories → games ----------
+  function showGames() {
+    const u = Store.user(); if (!u) return showProfiles();
     go(`
-      ${backBtn("home", "", "לדף הבית")}
-      <h1 class="title" style="color:${cat.color}">${cat.icon} ${cat.name}</h1>
-      <div class="games">
-        ${Games.inCat(c).map((g) => {
+      <h1 class="title sm">🎮 בחרו תחום</h1>
+      <div class="cats-fill">
+        ${Object.entries(CATS).map(([k, c]) => {
+          const games = Games.inCat(k).length, passed = Stats.catPassed(u, k);
+          return `<button class="cat" style="--c:${c.color}" data-act="cat" data-arg="${k}">
+            <span class="cat-ic">${c.icon}</span><span class="cat-name">${c.name}</span>
+            <span class="cat-sc">${passed ? `${passed}/${games * MAX_LEVEL} רמות` : `${games} משחקים`}</span></button>`;
+        }).join("")}
+      </div>`, { tab: "games" });
+  }
+
+  function showCat(c) {
+    const u = Store.user(), cat = CATS[c], games = Games.inCat(c);
+    go(`
+      <div class="topline">${backBtn("tab", "games", "תחומים")}<h1 class="title sm" style="color:${cat.color}">${cat.icon} ${cat.name}</h1><span class="topline-pad"></span></div>
+      <div class="games-fill" style="--n:${games.length}">
+        ${games.map((g) => {
           const p = Levels.passed(u, g.id);
           return `<button class="game" style="--c:${cat.color}" data-act="game" data-arg="${g.id}">
             <span class="g-ic">${g.icon}</span>
@@ -108,32 +152,27 @@
               <span class="g-prog"><i style="width:${(100 * p) / MAX_LEVEL}%"></i></span></span>
             <span class="g-best">רמה<br><b>${Levels.unlocked(u, g.id)}</b></span></button>`;
         }).join("")}
-      </div>`);
+      </div>`, { tab: "games" });
   }
 
-  // ---------- Level select ----------
+  // ---------- Level select (one screen) ----------
   function showGame(id) {
     const u = Store.user(), g = Games.byId[id], b = Levels.bests(u, id);
     const unl = Levels.unlocked(u, id, b), passed = Levels.passed(u, id, b);
     go(`
-      ${backBtn("cat", g.cat, CATS[g.cat].name)}
-      <h1 class="title">${g.icon} ${g.name}</h1>
-      <div class="game-top">
-        <p class="how">${g.how}</p>
-        <div>
-          <button class="btn big-play" data-act="play" data-arg="${id}:${unl}">▶ ${passed ? "המשך לרמה" : "התחלה ברמה"} ${unl}</button>
-          <p class="sub small">עברתם ${passed} מתוך ${MAX_LEVEL} רמות · כדי לפתוח רמה חדשה צריך ${PASS_SCORE} נקודות</p>
-        </div>
-      </div>
-      <h2 class="h2">כל הרמות</h2>
-      <div class="levels">
+      <div class="topline">${backBtn("cat", g.cat, CATS[g.cat].name)}<h1 class="title sm">${g.icon} ${g.name}</h1><button class="infobtn" data-act="info" data-arg="${id}" aria-label="איך משחקים">ℹ️ <span>איך משחקים</span></button></div>
+      <button class="btn big-play" data-act="play" data-arg="${id}:${unl}">▶ ${passed ? "המשך לרמה" : "התחלה ברמה"} ${unl}</button>
+      <p class="sub small">עברתם ${passed} מתוך ${MAX_LEVEL} רמות · רמה חדשה נפתחת ב-${PASS_SCORE} נקודות</p>
+      <div class="levels-fill">
         ${Array.from({ length: MAX_LEVEL }, (_, i) => i + 1).map((l) => l > unl
           ? `<button class="lvl locked" disabled aria-label="רמה ${l} נעולה"><b>${l}</b><small>🔒</small></button>`
           : `<button class="lvl ${l === unl ? "cur" : ""} ${b[l] !== null && b[l] >= PASS_SCORE ? "passed" : ""}" data-act="play" data-arg="${id}:${l}"><b>${l}</b><small>${b[l] === null ? "&nbsp;" : starStr(b[l])}</small></button>`).join("")}
-      </div>`);
+      </div>`, { tab: "games" });
+    u.seen = u.seen || {};
+    if (!u.seen[id]) { u.seen[id] = 1; Store.save(); Actions.info(id); }
   }
 
-  // ---------- Play ----------
+  // ---------- Play (no tabs, no scroll) ----------
   function startGame(id, level) {
     const g = Games.byId[id];
     go(`
@@ -143,8 +182,8 @@
         <div class="play-status" id="status"></div>
       </div>
       <div class="msg" id="msg" aria-live="polite"></div>
-      <div class="stage" id="stage"></div>`, true);
-    view.classList.add("playing"); document.body.classList.add("in-game");
+      <div class="stage" id="stage"></div>`, { inGame: true });
+    view.classList.add("playing");
     const stage = $("#stage"), t0 = Date.now();
     let resizeFn = null, finished = false;
     const api = {
@@ -174,43 +213,61 @@
     showResult(g, level, r, res.stats || [], prevBest, newly, allDone, unlAfter > unlBefore ? unlAfter : 0);
   }
 
+  // ---------- Result (one screen) ----------
   function showResult(g, level, r, stats, prevBest, newly, allDone, opened) {
     const passed = r.s >= PASS_SCORE;
     const head = r.s >= 90 ? "מדהים! 🎉" : r.s >= 70 ? "כל הכבוד! 👏" : passed ? "יפה מאוד! 😊" : "התחלה טובה! 🌱";
-    let levelNote = "";
-    if (passed && level === MAX_LEVEL) levelNote = '<p class="record">🏆 עברתם את הרמה האחרונה!</p>';
-    else if (opened) levelNote = `<p class="record">🔓 נפתחה רמה ${opened}!</p>`;
-    else if (!passed) levelNote = `<p class="sub">כדי לעבור לרמה הבאה צריך ${PASS_SCORE} נקודות. כל משחק הוא אימון – נסו שוב!</p>`;
-    const nextBtn = passed && level < MAX_LEVEL ? `<button class="btn" data-act="play" data-arg="${g.id}:${level + 1}">▶ לרמה ${level + 1}</button>` : "";
+    let note = "";
+    if (passed && level === MAX_LEVEL) note = '<p class="record">🏆 עברתם את הרמה האחרונה!</p>';
+    else if (opened) note = `<p class="record">🔓 נפתחה רמה ${opened}!</p>`;
+    else if (!passed) note = `<p class="note">צריך ${PASS_SCORE} נקודות כדי לעבור – נסו שוב!</p>`;
+    else if (prevBest !== null && r.s > prevBest) note = '<p class="record">🏅 שיא אישי חדש!</p>';
+    const chips = [...stats.slice(0, 3), ["זמן", fmtTime(r.t)], [`נקודות (×${levelMult(level)})`, "+" + r.p]];
+    const taskLine = allDone
+      ? '<p class="taskdone">🏆 השלמתם את כל המשימות של היום!</p>'
+      : newly.length ? `<p class="taskdone">✅ משימה הושלמה: ${esc(newly[0].text)}</p>` : "";
+    const canNext = passed && level < MAX_LEVEL;
     go(`
-      <h1 class="title">${head}</h1>
-      <div class="result-grid">
-        <div>
+      <div class="result">
+        <div class="res-score">
+          <h1 class="title sm">${head}</h1>
           <div class="score-ring" style="--p:${r.s};--c:${CATS[g.cat].color}"><div><b>${r.s}</b><span>מתוך 100</span></div></div>
           <div class="stars" aria-label="${stars(r.s)} כוכבים">${starStr(r.s)}</div>
-          <p class="center muted">${g.icon} ${g.name} · רמה ${level}</p>
-          ${levelNote}
-          ${prevBest !== null && r.s > prevBest ? '<p class="record">🏅 שיא אישי חדש ברמה הזו!</p>' : ""}
+          <p class="res-game">${g.icon} ${g.name} · רמה ${level}</p>
+          ${note}
         </div>
-        <div>
-          <div class="statlist">
-            ${stats.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("")}
-            <div><span>זמן</span><b>${fmtTime(r.t)}</b></div>
-            <div><span>נקודות שנצברו (×${levelMult(level)})</span><b>+${r.p}</b></div>
-          </div>
-          ${newly.map((t) => `<p class="taskdone">✅ משימה יומית הושלמה: ${esc(t.text)}</p>`).join("")}
-          ${allDone ? '<p class="allgood">🏆 השלמתם את כל המשימות של היום!</p><button class="btn good" data-act="moreTasks">🎯 עוד משימות להיום</button>' : ""}
-          ${nextBtn}
-          <button class="btn ${nextBtn ? "secondary" : ""}" data-act="play" data-arg="${g.id}:${level}">🔄 ${passed ? "שוב" : "נסו שוב"}</button>
-          <div class="row2">
+        <div class="res-info">
+          <div class="stat-chips">${chips.map(([k, v]) => `<div><small>${k}</small><b>${v}</b></div>`).join("")}</div>
+          ${taskLine}
+          <div class="res-btns ${canNext ? "three" : ""}">
+            ${canNext ? `<button class="btn good" data-act="play" data-arg="${g.id}:${level + 1}">▶ לרמה ${level + 1}</button>` : ""}
+            <button class="btn ${canNext ? "secondary" : ""}" data-act="play" data-arg="${g.id}:${level}">🔄 ${passed ? "שוב" : "נסו שוב"}</button>
             <button class="btn secondary" data-act="game" data-arg="${g.id}">כל הרמות</button>
-            <button class="btn secondary" data-act="home">🏠 בית</button>
           </div>
+          ${allDone ? '<button class="btn good slim" data-act="moreTasks">🎯 עוד משימות להיום</button>' : ""}
         </div>
-      </div>`);
+      </div>`, { tab: "games" });
   }
 
-  // ---------- Progress ----------
+  // ---------- Tasks tab (one screen) ----------
+  function showTasks() {
+    const u = Store.user(); if (!u) return showProfiles();
+    const d = Daily.ensure(u); Store.save();
+    const doneN = d.tasks.filter((t) => t.done).length;
+    const roundsDone = (d.round || 1) - 1 + (d.bonus ? 1 : 0);
+    go(`
+      <h1 class="title sm">📅 המשימות של היום</h1>
+      <p class="sub small">${d.round > 1 ? `סבב ${d.round} · ` : ""}הושלמו ${doneN} מתוך ${d.tasks.length} · המשימה הראשונה מהתחום שכדאי לחזק</p>
+      <div class="tasks-fill">${d.tasks.map(taskBtn).join("")}</div>
+      ${d.bonus ? '<p class="allgood">🏆 כל המשימות הושלמו – כל הכבוד!</p><button class="btn good" data-act="moreTasks">🎯 עוד משימות להיום</button>' : ""}
+      <div class="chips">
+        <div class="chipstat"><span>🎮</span><b>${Stats.gamesToday(u)}</b><small>משחקים היום</small></div>
+        <div class="chipstat"><span>✅</span><b>${roundsDone}</b><small>סבבים הושלמו היום</small></div>
+        <div class="chipstat"><span>🏆</span><b>${u.taskDays.length}</b><small>ימים עם כל המשימות</small></div>
+      </div>`, { tab: "tasks" });
+  }
+
+  // ---------- Stats tab (scroll allowed) ----------
   function spark(vals, color) {
     if (vals.length < 2) return "";
     const W = 160, H = 44, step = W / (vals.length - 1);
@@ -225,7 +282,7 @@
       return `<div class="dc ${isToday ? "today" : ""}"><span class="dc-n">${x.n || ""}</span><span class="dc-bar"><i style="height:${(100 * x.n) / max}%"></i></span><span class="dc-d">${isToday ? "היום" : dn[dt.getDay()]}</span></div>`;
     }).join("")}</div>`;
   }
-  function showProgress() {
+  function showStats() {
     const u = Store.user(); if (!u) return showProfiles();
     const rs = u.results;
     const recent10 = avg(rs.slice(-10).map((r) => r.s));
@@ -242,8 +299,7 @@
     const trendTx = (t) => (t > 4 ? '<span class="up">⬆ משתפר</span>' : t < -4 ? '<span class="down">⬇ ירידה קלה</span>' : '<span class="flat">⬅ יציב</span>');
 
     go(`
-      ${backBtn("home", "", "לדף הבית")}
-      <h1 class="title">📈 ההתקדמות של ${esc(u.name)}</h1>
+      <h1 class="title sm">📈 ההתקדמות של ${esc(u.name)}</h1>
       <div class="kpis">
         <div class="kpi"><b>${rs.length}</b><span>משחקים</span></div>
         <div class="kpi"><b>${Stats.totalPoints(u)}</b><span>נקודות</span></div>
@@ -273,11 +329,14 @@
         const g = Games.byId[r.g];
         return `<div class="rr"><span>${fmtDate(r.d)}</span><span>${g ? g.icon + " " + g.name : r.g} · רמה ${r.l}</span><b>${r.s}</b></div>`;
       }).join("")}</div>` : '<p class="sub">עוד לא שוחקו משחקים.</p>'}
+      <h2 class="h2">⚙️ הגדרות</h2>
       <div class="settings">
+        <button class="btn secondary" data-act="sound">${Store.data.sound ? "🔊 צלילים: פועלים" : "🔇 צלילים: כבויים"}</button>
+        <button class="btn secondary" data-act="profiles">👥 החלפת שחקן</button>
         <button class="btn secondary" data-act="checkUpdate">🔄 בדיקת עדכונים</button>
         <p class="center muted ver">גרסה ${APP_VERSION}</p>
         <button class="btn danger" data-act="deleteUser">🗑 מחיקת השחקן ${esc(u.name)}</button>
-      </div>`);
+      </div>`, { tab: "stats", scroll: true });
   }
 
   // ---------- In-app updates ----------
@@ -319,13 +378,19 @@
   }
 
   // ---------- Actions ----------
+  const TABS = { home: showHome, games: showGames, tasks: showTasks, stats: showStats };
   const Actions = {
     profiles: showProfiles,
     newUser: showNewUser,
     home: showHome,
-    progress: showProgress,
+    progress: showStats,
+    tab: (t) => (TABS[t] || showHome)(),
     cat: (c) => showCat(c),
     game: (id) => showGame(id),
+    info(id) {
+      const g = Games.byId[id];
+      openModal(`<div class="modal-ic">${g.icon}</div><h2 class="h2 center">${g.name} – איך משחקים?</h2><p class="how">${g.how}</p>`);
+    },
     pickUser(id) { Store.data.currentId = id; Store.save(); showHome(); },
     avatar(a, b) { newAvatar = a; view.querySelectorAll(".avatar").forEach((x) => x.classList.toggle("sel", x === b)); },
     saveUser() {
@@ -336,9 +401,9 @@
     task(i) { showGame(Daily.ensure(Store.user()).tasks[Number(i)].game); },
     play(arg) { const [id, l] = arg.split(":"); startGame(id, Number(l)); },
     quit() { if (confirm("לצאת מהמשחק? התוצאה של המשחק הזה לא תישמר.")) showHome(); },
-    sound() { Store.data.sound = !Store.data.sound; Store.save(); Sound.flip(); showHome(); },
+    sound() { Store.data.sound = !Store.data.sound; Store.save(); Sound.flip(); showStats(); },
     checkUpdate() { Updater.check(true); },
-    moreTasks() { Daily.more(Store.user()); Store.save(); showHome(); },
+    moreTasks() { Daily.more(Store.user()); Store.save(); showTasks(); },
     deleteUser() {
       const u = Store.user();
       if (confirm(`למחוק את ${u.name} וכל ההתקדמות? אי אפשר לבטל את זה.`)) { Store.removeUser(u.id); showProfiles(); }
@@ -348,14 +413,23 @@
     const b = e.target.closest("[data-act]"); if (!b || b.disabled) return;
     const fn = Actions[b.dataset.act]; if (fn) fn(b.dataset.arg, b);
   });
+  tabbar.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tab]"); if (!b) return;
+    Sound.flip(); Actions.tab(b.dataset.tab);
+  });
   view.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.id === "nu-name") Actions.saveUser(); });
   window.addEventListener("resize", () => { if (running) running.resize(); });
 
-  // native feel: no pinch / double-tap zoom, no long-press menus
+  // native feel: no pinch / double-tap zoom, no long-press menus, no page scrolling outside scroll areas
   ["gesturestart", "gesturechange"].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault(), { passive: false }));
   let lastTouch = 0;
   document.addEventListener("touchend", (e) => { const n = Date.now(); if (n - lastTouch < 350 && !e.target.closest("input")) e.preventDefault(); lastTouch = n; }, { passive: false });
   document.addEventListener("contextmenu", (e) => { if (!e.target.closest("input")) e.preventDefault(); });
+  document.addEventListener("touchmove", (e) => {
+    if (e.touches.length > 1) { e.preventDefault(); return; }
+    const sc = e.target.closest("#view.scroll, .modal-box");
+    if (!sc || document.body.classList.contains("in-game")) e.preventDefault();
+  }, { passive: false });
 
   // ---------- Boot ----------
   Store.load();

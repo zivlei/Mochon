@@ -16,7 +16,15 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<main id="view"></main>
+<div id="app">
+  <main id="view"></main>
+  <nav id="tabbar" aria-label="ניווט ראשי">
+    <button data-tab="home"><span>🏠</span>בית</button>
+    <button data-tab="games"><span>🎮</span>משחקים</button>
+    <button data-tab="tasks"><span>📅</span>משימות<i class="tbadge" id="taskBadge" hidden></i></button>
+    <button data-tab="stats"><span>📈</span>סטטיסטיקות</button>
+  </nav>
+</div>
 <script src="js/core.js"></script>
 <script src="js/games/match.js"></script>
 <script src="js/games/simon.js"></script>
