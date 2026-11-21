@@ -531,8 +531,16 @@ body.no-tabs #view { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
 .palette .pal { flex: 0 1 110px; min-width: 0; font-size: clamp(30px, min(9vw, 6vh), 58px); padding: 4px; min-height: clamp(60px, 10vh, 96px); }
 
 /* pattern */
-.seq.pat { gap: clamp(4px, .8vh, 8px); }
-.seq.pat span { font-size: clamp(28px, min(8.5vw, 6vh), 60px); padding: 2px 6px; min-width: 0; font-family: inherit; }
+/* one line only – on two lines the answer always sat right above the question mark */
+.seq.pat { flex-wrap: nowrap; gap: clamp(2px, .8cqw, 8px); width: 100%; container-type: inline-size; --k: var(--n); }
+.seq.pat .pr { display: contents; }
+.seq.pat span { flex: 0 0 auto; font-size: min(60px, 6vh, calc((100cqw - var(--k) * 6px) / var(--k) / 1.5)); padding: 1px; min-width: 0; font-family: inherit; text-align: center; border: 0; background: none; line-height: 1.2; }
+.seq.pat span.qmark { border: 3px solid var(--primary); background: var(--bg); min-width: 1em; padding: 0 2px; }
+/* phones: two lines (see pattern.js for why the line length is chosen carefully) */
+@media (max-width: 600px) {
+  .seq.pat { flex-direction: column; align-items: center; --k: var(--r); }
+  .seq.pat .pr { display: flex; flex-wrap: nowrap; justify-content: center; gap: inherit; width: 100%; }
+}
 
 /* trace */
 .trace { touch-action: none; }
