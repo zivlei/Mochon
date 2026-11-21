@@ -197,7 +197,8 @@
         setTimeout(() => onFinish(g, level, res, (Date.now() - t0) / 1000), 0);
       }
     };
-    running = { handle: g.start(stage, level, api), resize: () => resizeFn && resizeFn() };
+    api.playerLevel = level;
+    running = { handle: g.start(stage, diffLevel(level), api), resize: () => resizeFn && resizeFn() };
   }
 
   function onFinish(g, level, res, timeSec) {
@@ -413,7 +414,7 @@
     game: (id) => showGame(id),
     info(id) {
       const g = Games.byId[id];
-      openModal(`<div class="modal-ic">${g.icon}</div><h2 class="h2 center">${g.name} – איך משחקים?</h2><p class="how">${g.how}</p>`);
+      openModal(`<div class="modal-ic">${g.icon}</div><h2 class="h2 center">${g.name} – איך משחקים?</h2><p class="how">${howText(g.how)}</p>`);
     },
     pickUser(id) { Store.data.currentId = id; Store.save(); showHome(); },
     avatar(a, b) { newAvatar = a; view.querySelectorAll(".avatar").forEach((x) => x.classList.toggle("sel", x === b)); },
