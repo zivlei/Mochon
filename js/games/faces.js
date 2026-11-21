@@ -2,9 +2,15 @@
    Levels: 3 → 8 people, less time to meet them; from level 16 some questions go the other way (name → face).
    Score = 80% correct + 20% speed. */
 (function () {
-  const FACES = ["👵", "👴", "👩", "👨", "👱‍♀️", "👱‍♂️", "👩‍🦰", "👨‍🦰", "👩‍🦱", "👨‍🦱", "👩‍🦳", "👨‍🦳", "🧔", "👲", "🧕", "👳‍♂️", "👧", "👦", "👮‍♀️", "👨‍🍳", "👩‍⚕️", "👨‍🌾", "👷‍♀️", "🤵"];
-  const NAMES = ["רחל", "משה", "שרה", "דוד", "מרים", "יוסף", "חנה", "אברהם", "לאה", "יעקב", "רבקה", "שמואל", "אסתר", "אהרון", "רות", "בנימין",
-    "תמר", "אליהו", "נעמי", "יצחק", "דבורה", "חיים", "שושנה", "מנחם", "אורה", "גדעון", "זהבה", "עמוס", "יפה", "שלמה", "ציפורה", "נחום"];
+  // women and men are kept apart so every name fits the face it belongs to
+  const FACES = {
+    f: ["👵", "👩", "👱‍♀️", "👩‍🦰", "👩‍🦱", "👩‍🦳", "🧕", "👮‍♀️", "👩‍⚕️", "👷‍♀️", "👩‍🍳", "👩‍🌾", "👩‍🏫"],
+    m: ["👴", "👨", "👱‍♂️", "👨‍🦰", "👨‍🦱", "👨‍🦳", "🧔", "👳‍♂️", "👮‍♂️", "👨‍⚕️", "👨‍🍳", "👨‍🌾", "👨‍🏫", "🤵"]
+  };
+  const NAMES = {
+    f: ["רחל", "שרה", "מרים", "חנה", "לאה", "רבקה", "אסתר", "רות", "תמר", "נעמי", "דבורה", "שושנה", "אורה", "זהבה", "יפה", "ציפורה"],
+    m: ["משה", "דוד", "יוסף", "אברהם", "יעקב", "שמואל", "אהרון", "בנימין", "אליהו", "יצחק", "חיים", "מנחם", "גדעון", "עמוס", "שלמה", "נחום"]
+  };
   Games.register({
     id: "faces", cat: "memory", name: "פנים ושמות", icon: "🙋",
     desc: "הכירו אנשים וזכרו את שמם",
@@ -12,9 +18,14 @@
     start(stage, level, api) {
       const k = Math.round(lerp(3, 8, level));
       const meetMs = Math.round(k * lerp(3000, 1600, level) + 1000);
-      const people = shuffle(FACES.slice()).slice(0, k).map((f) => ({ f, n: null }));
-      const names = shuffle(NAMES.slice());
-      people.forEach((p, i) => (p.n = names[i]));
+      const nf = Math.random() < 0.5 ? Math.floor(k / 2) : Math.ceil(k / 2);
+      const pool = { f: { faces: shuffle(FACES.f.slice()), names: shuffle(NAMES.f.slice()) }, m: { faces: shuffle(FACES.m.slice()), names: shuffle(NAMES.m.slice()) } };
+      const people = shuffle(Array.from({ length: k }, (_, i) => { const g = i < nf ? "f" : "m"; return { g, f: pool[g].faces.pop(), n: pool[g].names.pop() }; }));
+      // wrong answers come from the same gender – first people met in this round, then unused faces / names
+      const distract = (p, key) => {
+        const met = shuffle(people.filter((x) => x !== p && x.g === p.g).map((x) => x[key]));
+        return met.concat(pool[p.g][key === "f" ? "faces" : "names"].slice(0, 3)).slice(0, 3);
+      };
       const T = timersKit();
       let quiz = null;
       stage.innerHTML = `<div class="board">
@@ -35,9 +46,8 @@
           make(i) {
             const p = order[i - 1];
             const reverse = level >= 16 && Math.random() < 0.4;
-            const others = shuffle(people.filter((x) => x !== p)).slice(0, 3);
-            if (reverse) return { html: `<div class="q-line">איך נראה/ית</div><div class="big-q">${p.n}?</div>`, ans: p.f, opts: shuffle([p, ...others].map((x) => x.f)), prompt: "בחרו את הפרצוף", optClass: "emo" };
-            return { html: `<div class="face-q">${p.f}</div><div class="q-line">מה השם?</div>`, ans: p.n, opts: shuffle([p, ...others].map((x) => x.n)), prompt: "", optClass: "txt" };
+            if (reverse) return { html: `<div class="q-line">${p.g === "f" ? "איך נראית" : "איך נראה"}</div><div class="big-q">${p.n}?</div>`, ans: p.f, opts: shuffle([p.f, ...distract(p, "f")]), prompt: "בחרו את הפרצוף", optClass: "emo" };
+            return { html: `<div class="face-q">${p.f}</div><div class="q-line">${p.g === "f" ? "מה שמה?" : "מה שמו?"}</div>`, ans: p.n, opts: shuffle([p.n, ...distract(p, "n")]), prompt: "", optClass: "txt" };
           },
           label: (v) => v
         });
