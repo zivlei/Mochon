@@ -392,6 +392,16 @@ body.no-tabs #view { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
 .sopts.six { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .sopt { min-height: clamp(56px, 9.5vh, 96px); min-width: 0; font-size: clamp(21px, 3.6vh, 36px); font-weight: 800; background: var(--sc); color: #1b2430; border: 4px solid rgba(0,0,0,.12); border-radius: var(--radius); cursor: pointer; padding: 4px; }
 .sopt:active { transform: scale(.97); }
+/* rule look: INK = dark card framed in purple, buttons are colour swatches; WORD = paper card framed in teal, buttons are plain words */
+.sword { position: relative; border: 6px solid transparent; transition: background .25s, border-color .25s; }
+.sbadge { position: absolute; top: 6px; inset-inline-start: 10px; font-size: clamp(26px, 5vh, 48px); line-height: 1; font-style: normal; }
+.m-ink .sword { background: #232a33; border-color: #9b6fd6; }
+.m-word .sword { background: #f6efdc; border-color: #0f7c86; background-image: repeating-linear-gradient(transparent 0 calc(25% - 2px), #d9cfb6 calc(25% - 2px) 25%); }
+.m-word .sword span { -webkit-text-stroke: 2px #1b2430; paint-order: stroke fill; }
+.sopt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: background .25s, color .25s; }
+.sopt i { display: none; }
+.m-ink .sopt { background: var(--sc); color: rgba(27,36,48,.75); font-size: clamp(15px, 2.2vh, 22px); }
+.m-word .sopt { background: #fffdf6; color: #1b2430; border-color: #0f7c86; }
 .sopt.right { box-shadow: 0 0 0 5px var(--good); border-color: #fff; }
 .sopt.wrong { box-shadow: 0 0 0 5px var(--bad); animation: shake .4s; }
 

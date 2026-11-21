@@ -2,7 +2,7 @@
 "use strict";
 
 /** Bump this together with version.json on every release – installed apps compare it to show "update available". */
-const APP_VERSION = "3.4.0";
+const APP_VERSION = "3.4.1";
 
 // ---------- helpers ----------
 const $ = (s, r) => (r || document).querySelector(s);
@@ -76,8 +76,8 @@ const CATS = {
 const MAX_LEVEL = 30, PASS_SCORE = 50;
 /** linear interpolation over levels 1..30 */
 const lerp = (a, b, l) => a + ((b - a) * (clamp(l, 1, MAX_LEVEL) - 1)) / (MAX_LEVEL - 1);
-/** Difficulty actually given to a game: the player's level 1 starts where level 8 used to (too easy before), level 30 stays the hardest. */
-const DIFF_START = 8;
+/** Difficulty actually given to a game: the player's level 1 starts where level 12 used to (too easy before), level 30 stays the hardest. */
+const DIFF_START = 12;
 const diffLevel = (l) => Math.round(DIFF_START + ((clamp(l, 1, MAX_LEVEL) - 1) * (MAX_LEVEL - DIFF_START)) / (MAX_LEVEL - 1));
 /** first player level whose difficulty reaches d / last player level whose difficulty is still <= d */
 const levelFrom = (d) => { let l = 1; while (l < MAX_LEVEL && diffLevel(l) < d) l++; return l; };

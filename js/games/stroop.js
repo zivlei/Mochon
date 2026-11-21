@@ -17,7 +17,7 @@
   Games.register({
     id: "stroop", cat: "focus", name: "צבע או מילה", icon: "🎨",
     desc: "לחצו לפי צבע הכתב – או לפי מה שכתוב",
-    how: `${TRIALS} מילים של צבעים, כתובות בצבעים אחרים. מעל המילה יש שלט:<br>🎨 <b>לפי הצבע</b> – לחצו על הצבע שבו המילה כתובה, והתעלמו ממה שכתוב.<br>📖 <b>לפי המילה</b> – לחצו על הצבע שכתוב, והתעלמו מצבע הכתב.<br>ברמות גבוהות השלט מתחלף יותר, יש יותר צבעים ופחות זמן.`,
+    how: `${TRIALS} מילים של צבעים, כתובות בצבעים אחרים. המסך מראה לפי מה עונים:<br>🎨 <b>לפי הצבע</b> – לוח כהה וכפתורי צבע. לחצו על הצבע שבו המילה כתובה, והתעלמו ממה שכתוב.<br>📖 <b>לפי המילה</b> – לוח בהיר כמו דף, וכפתורים עם מילים. לחצו על המילה שכתובה, והתעלמו מצבע הכתב.<br>ברמות גבוהות השלט מתחלף יותר, יש יותר צבעים ופחות זמן.`,
     start(stage, level, api) {
       const nColors = level >= 11 ? 6 : 4;
       const palette = COLORS.slice(0, nColors);
@@ -27,11 +27,11 @@
       const switchEvery = level <= 5 ? 4 : level <= 15 ? 0 : -1;
       stage.innerHTML = `<div class="stroop">
           <div class="rule"></div>
-          <div class="sword"><span></span></div>
+          <div class="sword"><b class="sbadge"></b><span></span></div>
           <div class="timebar small"><i></i></div>
-          <div class="sopts ${nColors > 4 ? "six" : ""}">${palette.map((p) => `<button class="sopt" data-id="${p.id}" style="--sc:${p.c}">${p.name}</button>`).join("")}</div>
+          <div class="sopts ${nColors > 4 ? "six" : ""}">${palette.map((p) => `<button class="sopt" data-id="${p.id}" style="--sc:${p.c}"><i></i><span>${p.name}</span></button>`).join("")}</div>
         </div>`;
-      const ruleEl = $(".rule", stage), wordEl = $(".sword span", stage), bar = $(".timebar i", stage), optsEl = $(".sopts", stage);
+      const ruleEl = $(".rule", stage), wordEl = $(".sword span", stage), bar = $(".timebar i", stage), optsEl = $(".sopts", stage), badgeEl = $(".sbadge", stage);
       const timers = [], later = (f, ms) => timers.push(setTimeout(f, ms));
       let n = 0, correct = 0, rule = "ink", cur = null, shown = 0, lock = true, trialTimer = null, switches = 0;
       const times = [];
@@ -47,6 +47,9 @@
         rule = r;
         ruleEl.textContent = RULES[r].label;
         ruleEl.className = "rule " + RULES[r].cls + (changed ? " flash" : "");
+        // the whole board changes look with the rule: dark "paint" card + colour buttons for INK, paper card + word buttons for WORD
+        stage.firstElementChild.classList.toggle("m-ink", r === "ink"); stage.firstElementChild.classList.toggle("m-word", r === "word");
+        badgeEl.textContent = r === "ink" ? "🎨" : "📖";
         return changed;
       }
       function next() {
