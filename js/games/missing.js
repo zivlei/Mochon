@@ -1,15 +1,17 @@
-/* זיכרון – מה חסר? Look at N pictures, one disappears, choose which. Levels: 3→12 pictures, shorter viewing, more options. */
+/* זיכרון – מה חסר? Look at N pictures, one disappears, choose which. Levels: 7→14 pictures, shorter viewing.
+   All rounds draw from one small family of similar pictures, so the wrong options look familiar too. */
 (function () {
-  const POOL = ["🍎", "🌻", "🐱", "🏠", "☀️", "🚗", "🐟", "🎈", "🍇", "🌳", "🐶", "⭐", "🍌", "🦋", "☕", "🎵", "🔑", "👓", "📖", "⏰", "🎩", "🧦", "🍞", "🥕", "🐢", "🚲", "🌂", "🎁", "🕯️", "🪑", "🐘", "🍓"];
+  const FAMILIES = [["fruit", "veg"], ["animal", "plant"], ["thing", "food"]];
   const ROUNDS = 6;
   Games.register({
     id: "missing", cat: "memory", name: "מה חסר?", icon: "🫥",
     desc: "זכרו את התמונות וגלו איזו נעלמה",
-    how: `${ROUNDS} סיבובים. הסתכלו על התמונות וזכרו אותן. אחרי כמה שניות אחת מהן תיעלם – בחרו איזו. ברמות גבוהות יש יותר תמונות ופחות זמן להסתכל.`,
+    how: `${ROUNDS} סיבובים. הסתכלו על התמונות וזכרו אותן. אחרי כמה שניות אחת מהן תיעלם – בחרו איזו. התמונות דומות וחוזרות בין הסיבובים, אז זכרו מה היה בסיבוב הזה. ברמות גבוהות יש יותר תמונות ופחות זמן להסתכל.`,
     start(stage, level, api) {
-      const N = 3 + Math.floor((level - 1) / 3);
-      const viewMs = Math.round(N * lerp(1500, 750, level) + 1000);
-      const nOpts = level >= 16 ? 6 : 4;
+      const N = Math.round(lerp(7, 14, level));
+      const viewMs = Math.round(N * lerp(1200, 750, level) + 1000);
+      const nOpts = 6;
+      const pool = shuffle(itemsOf(...pick(FAMILIES)).map((i) => i.e)).slice(0, N + nOpts - 1);
       stage.innerHTML = '<div class="missing"><div class="mgrid-wrap"><div class="grid mgrid"></div></div><div class="mbottom"></div></div>';
       const grid = $(".mgrid", stage), wrap = $(".mgrid-wrap", stage), bottom = $(".mbottom", stage);
       const timers = [], later = (f, ms) => timers.push(setTimeout(f, ms));
@@ -24,22 +26,24 @@
       function next() {
         if (round >= ROUNDS) return finish();
         round++; lock = true; api.status(`סיבוב ${round}/${ROUNDS}`);
-        items = shuffle(POOL.slice()).slice(0, N);
+        items = shuffle(pool.slice()).slice(0, N);
         render(items);
         api.msg("זכרו את התמונות", "soft");
         bottom.innerHTML = '<button class="btn ready">✔ זכרתי</button><div class="timebar"><i></i></div>';
         const bar = $(".timebar i", bottom);
         bar.style.transition = `width ${viewMs}ms linear`; requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.width = "0%"; }));
         const t = setTimeout(ask, viewMs); timers.push(t);
+        layout();
         $(".ready", bottom).onclick = () => { clearTimeout(t); ask(); };
       }
       function ask() {
         gone = pick(items);
         render(shuffle(items.filter((x) => x !== gone)));
-        const others = shuffle(POOL.filter((x) => !items.includes(x))).slice(0, nOpts - 1);
+        const others = shuffle(pool.filter((x) => !items.includes(x))).slice(0, nOpts - 1);
         const opts = shuffle([gone, ...others]);
         api.msg("איזו תמונה נעלמה?", "soft");
         bottom.innerHTML = `<div class="opts emo ${nOpts > 4 ? "many" : ""}">${opts.map((o) => `<button class="opt" data-v="${o}">${o}</button>`).join("")}</div>`;
+        layout();
         lock = false; shown = Date.now();
       }
       bottom.addEventListener("click", (e) => {

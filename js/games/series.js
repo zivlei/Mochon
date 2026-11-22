@@ -1,52 +1,47 @@
-/* היגיון – המשך הסדרה. Levels in tiers of 5: +1/+2 → bigger steps & descending → ×2 → alternating steps → growing gaps/squares → Fibonacci & interleaved. */
+/* היגיון – המשך הסדרה. Levels in tiers of 5: alternating & growing steps → squares, doubling → Fibonacci & interleaved → two operations → primes, cubes, sum of three. */
 (function () {
+  const build = (first, n, step) => { const s = [first]; while (s.length < n) s.push(step(s[s.length - 1], s.length - 1, s)); return s; };
+  const R = {
+    alternate: () => { const p = rand(5, 12), q = rand(1, p - 1); return [build(rand(5, 30), 7, (v, i) => (i % 2 ? v - q : v + p)), `לסירוגין +${p} ו-−${q}`]; },
+    growing: () => { const d = rand(2, 6), k = rand(1, 4); return [build(rand(1, 15), 6, (v, i) => v + d + i * k), `ההפרש גדל כל פעם ב-${k}`]; },
+    times: () => { const m = pick([2, 3]); return [build(rand(2, m === 2 ? 9 : 4), 5, (v) => v * m), `כל פעם כפול ${m}`]; },
+    shrinking: () => { const d = rand(2, 5); return [build(rand(90, 140), 6, (v, i) => v - d - i * 2), "ההפחתה גדלה כל פעם ב-2"]; },
+    squares: () => { const s = rand(1, 5), c = pick([0, 0, 1, 2]); return [Array.from({ length: 6 }, (_, i) => (s + i) ** 2 + c), c ? `ריבועים ועוד ${c}` : "מספרים בריבוע"]; },
+    plusOne: () => { const c = rand(1, 3); return [build(rand(1, 6), 6, (v) => v * 2 + c), `כפול 2 ועוד ${c}`]; },
+    fib: () => { const b = rand(2, 7); return [build(rand(1, 5), 7, (v, i, s) => (i ? v + s[i - 1] : b)), "כל מספר הוא סכום השניים שלפניו"]; },
+    weave: () => { const a = rand(1, 15), p = rand(2, 7), b = rand(30, 60), q = rand(1, 6); return [Array.from({ length: 8 }, (_, i) => (i % 2 ? b - q * ((i - 1) / 2) : a + p * (i / 2))), "שתי סדרות לסירוגין"]; },
+    twoOps: () => { const k = rand(1, 5); return [build(rand(2, 7), 7, (v, i) => (i % 2 ? v * 2 : v + k)), `לסירוגין +${k} וכפול 2`]; },
+    minus: () => { const c = rand(1, 2); return [build(rand(2, 4), 6, (v) => v * 3 - c), `כפול 3 פחות ${c}`]; },
+    gapTwice: () => { const d = rand(2, 4); return [build(rand(1, 12), 6, (v, i) => v + d * 2 ** i), "ההפרש מוכפל ב-2 כל פעם"]; },
+    primes: () => { const p = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37], s = rand(0, 5); return [p.slice(s, s + 7), "מספרים ראשוניים"]; },
+    cubes: () => { const c = rand(0, 3); return [[1, 2, 3, 4, 5, 6].map((i) => i ** 3 + c), c ? `מספרים בשלישית ועוד ${c}` : "מספרים בשלישית"]; },
+    three: () => { const b = rand(1, 4), c = rand(2, 5); return [build(rand(1, 3), 7, (v, i, s) => (i === 0 ? b : i === 1 ? c : v + s[i - 1] + s[i - 2])), "כל מספר הוא סכום השלושה שלפניו"]; }
+  };
+  const TIERS = [
+    ["alternate", "growing", "times", "shrinking"],
+    ["alternate", "growing", "squares", "times", "plusOne", "shrinking"],
+    ["squares", "plusOne", "fib", "weave"],
+    ["fib", "weave", "twoOps", "gapTwice"],
+    ["twoOps", "gapTwice", "minus", "fib", "weave"],
+    ["minus", "primes", "cubes", "three", "twoOps", "gapTwice"]
+  ];
   function gen(l) {
-    const tier = Math.ceil(l / 5);
-    let seq = [];
-    const arith = (a, d, k) => Array.from({ length: k }, (_, i) => a + d * i);
-    switch (tier) {
-      case 1: seq = arith(rand(1, 10), l <= 2 ? 1 : rand(1, 2) + (l >= 4 ? 1 : 0), 5); break;
-      case 2: { const d = rand(2, 5); seq = Math.random() < 0.5 ? arith(rand(1, 20), d, 5) : arith(rand(30, 60), -d, 5); break; }
-      case 3: {
-        if (Math.random() < 0.5) { const d = rand(3, 10) * (Math.random() < 0.3 ? -1 : 1); seq = arith(d < 0 ? rand(60, 100) : rand(1, 30), d, 5); }
-        else { const a = rand(1, 5); seq = [a, a * 2, a * 4, a * 8, a * 16]; }
-        break;
-      }
-      case 4: {
-        if (Math.random() < 0.5) { const p = rand(2, 5), q = rand(1, 4); let v = rand(5, 14); seq = [v]; for (let i = 1; i < 6; i++) { v += i % 2 ? p : -q; seq.push(v); } }
-        else { let v = rand(1, 10), d = rand(1, 3); seq = [v]; for (let i = 0; i < 5; i++) { v += d; d += 1; seq.push(v); } }
-        break;
-      }
-      case 5: {
-        const r = Math.random();
-        if (r < 0.35) { const s = rand(1, 4); seq = Array.from({ length: 5 }, (_, i) => (s + i) ** 2); }
-        else if (r < 0.7) { const a = rand(1, 3); seq = [a, a * 3, a * 9, a * 27, a * 81]; }
-        else { let v = rand(1, 5); seq = [v]; for (let i = 0; i < 5; i++) { v = v * 2 + 1; seq.push(v); } }
-        break;
-      }
-      default: {
-        const r = Math.random();
-        if (r < 0.4) { let a = rand(1, 4), b = rand(a, a + 4); seq = [a, b]; for (let i = 0; i < 5; i++) { const c = seq[seq.length - 1] + seq[seq.length - 2]; seq.push(c); } }
-        else if (r < 0.75) { const a = rand(1, 10), d1 = rand(2, 5), b = rand(20, 40), d2 = -rand(1, 4); seq = []; for (let i = 0; i < 7; i++) seq.push(i % 2 ? b + d2 * ((i - 1) / 2) : a + d1 * (i / 2)); }
-        else { let v = rand(2, 6); seq = [v]; for (let i = 0; i < 5; i++) { v = i % 2 ? v * 2 : v + rand(1, 5); seq.push(v); } seq = seq; }
-      }
-    }
-    const ans = seq[seq.length - 1];
-    return { shown: seq.slice(0, -1), ans };
+    const [seq, rule] = R[pick(TIERS[Math.ceil(l / 5) - 1])]();
+    return { shown: seq.slice(0, -1), ans: seq[seq.length - 1], rule };
   }
   Games.register({
     id: "series", cat: "logic", name: "המשך הסדרה", icon: "🔜",
     desc: "גלו את החוק ומצאו את המספר הבא",
-    how: "8 סדרות של מספרים. גלו לפי איזה חוק הן מתקדמות ובחרו את המספר הבא. בהתחלה החוק פשוט (עוד 1, עוד 2), וברמות הגבוהות הוא מורכב יותר.",
+    how: "8 סדרות של מספרים. גלו לפי איזה חוק הן מתקדמות ובחרו את המספר הבא. למשל צעדים לסירוגין, הכפלה או הפרש שגדל. אם טעיתם – יופיע החוק. ברמות הגבוהות החוקים מורכבים יותר.",
     start(stage, level, api) {
       return runQuiz(stage, api, {
-        rounds: 8, targetT: lerp(8, 20, level),
+        rounds: 8, targetT: lerp(12, 22, level),
         make() {
           const q = gen(level);
           return {
             html: `<div class="seq" dir="ltr">${q.shown.map((v) => `<span>${v}</span>`).join("")}<span class="qmark">?</span></div>`,
-            ans: q.ans, opts: numOptions(q.ans, 4, [1, 2, -1, -2, 3, -3, 4, 5, -5, 10]),
-            reveal: (el) => { el.querySelector(".qmark").textContent = q.ans; }
+            ans: q.ans, opts: numOptions(q.ans, 4, q.ans >= 100 ? [10, -10, 2, -2, 20, -20, 4] : [1, -1, 2, -2, 3, -3, 4, 10]),
+            reveal: (el, ok) => { el.querySelector(".qmark").textContent = q.ans; if (!ok) api.msg(`החוק: ${q.rule}`, "soft"); }
           };
         }
       });

@@ -1,29 +1,33 @@
 /* ריכוז – שומר הסף. Pictures pass one by one. Press the big button only when a picture fits the rule.
-   Levels: rule by kind (fruit) → by colour (red things) → both (red fruit); less time per picture.
+   Levels: kind + colour (red fruit) → kind without a colour (fruit that is not red); less time per picture.
    Score = 60% catching the right ones + 40% not pressing on the wrong ones. */
 (function () {
   const TOTAL = 24;
-  const KINDS = { fruit: "פירות", veg: "ירקות", animal: "בעלי חיים", vehicle: "כלי תחבורה", plant: "פרחים וצמחים", thing: "חפצים" };
+
   const COLORS = { red: "אדום", yellow: "צהוב", green: "ירוק", orange: "כתום" };
   const KIND1 = { fruit: "פרי", veg: "ירק", animal: "בעל חיים", vehicle: "כלי תחבורה", plant: "צמח", thing: "חפץ" };
   Games.register({
     id: "gatekeeper", cat: "focus", name: "שומר הסף", icon: "🚪",
     desc: "לחצו רק כשהתמונה מתאימה לכלל",
-    how: `למעלה כתוב כלל, למשל "רק פירות". תמונות יעברו אחת אחרי השנייה. לחצו על הכפתור ✋ רק כשהתמונה מתאימה לכלל – ואל תלחצו על כל השאר. ${TOTAL} תמונות.<br>ברמות 11–20 הכלל הוא צבע ("רק דברים אדומים"), ומרמה 21 – שניהם ("רק פרי אדום").`,
+    how: `למעלה כתוב כלל, למשל "רק פרי אדום". תמונות יעברו אחת אחרי השנייה. לחצו על הכפתור ✋ רק כשהתמונה מתאימה לכלל – ואל תלחצו על כל השאר. ${TOTAL} תמונות.<br>הכלל משלב סוג וצבע, ומרמה 11 יש בו "לא" ("רק פרי שאינו אדום").`,
     start(stage, level, api) {
-      const windowMs = Math.round(lerp(2600, 1100, level));
+      const windowMs = Math.round(lerp(1950, 1085, level));
       const T = timersKit();
       // choose a rule with enough matching pictures
-      let rule, match, ruleTx;
+      const negate = level >= 11;
+      let rule, match, ruleTx, bank;
       for (let g = 0; g < 50; g++) {
-        if (level <= 10) { const k = pick(Object.keys(KINDS)); match = (i) => i.t === k; ruleTx = `רק ${KINDS[k]}`; }
-        else if (level <= 20) { const c = pick(Object.keys(COLORS)); match = (i) => i.c === c; ruleTx = `רק דברים בצבע ${COLORS[c]}`; }
-        else { const c = pick(Object.keys(COLORS)), k = pick(["fruit", "veg", "animal", "thing", "plant"]); match = (i) => i.c === c && i.t === k; ruleTx = `רק ${KIND1[k]} ${COLORS[c]}`; rule = { c, k }; }
-        if (ITEMS.filter(match).length >= 2) break;
+        const c = pick(Object.keys(COLORS)), k = pick(Object.keys(KIND1).filter((x) => x !== "vehicle"));
+        match = (i) => i.t === k && !!i.c && (negate ? i.c !== c : i.c === c);
+        ruleTx = `רק ${KIND1[k]} ${negate ? "שאינו " : ""}${COLORS[c]}`;
+        rule = { c, k };
+        // pictures of that kind without one clear colour (🍐, 🍉) would be unfair, so they stay out
+        bank = ITEMS.filter((i) => i.t !== k || i.c);
+        if (bank.filter(match).length >= 2 && bank.some((i) => i.t === k && !match(i))) break;
       }
-      const yes = ITEMS.filter(match), no = ITEMS.filter((i) => !match(i));
-      // look-alike "no" pictures make higher levels harder (same colour or same kind)
-      const nearNo = rule ? no.filter((i) => i.c === rule.c || i.t === rule.k) : no;
+      const yes = bank.filter(match), no = bank.filter((i) => !match(i));
+      // "no" pictures that share the colour or the kind are the traps
+      const nearNo = no.filter((i) => i.c === rule.c || i.t === rule.k);
       const nYes = Math.round(TOTAL * 0.35);
       const seq = shuffle([...Array.from({ length: nYes }, () => pick(yes)), ...Array.from({ length: TOTAL - nYes }, () => (Math.random() < 0.5 && nearNo.length ? pick(nearNo) : pick(no)))]);
 

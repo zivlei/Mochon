@@ -501,6 +501,16 @@ body.no-tabs #view { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
 .note { width: clamp(108px, min(28vw, 18vh), 180px); height: clamp(58px, min(15vw, 9.5vh), 96px); border-radius: 10px; border: 3px solid rgba(0,0,0,.25); font-size: clamp(19px, 3vh, 30px); color: #1d2733; }
 .n20 { background: #e9a39c; } .n50 { background: #a8d8a3; } .n100 { background: #f2d27a; }
 
+@media (max-height: 760px) and (max-width: 520px) {
+  .money { gap: 6px; }
+  .reg .b-row { flex-wrap: nowrap; gap: 6px; }
+  .reg .b-row .btn { flex: 1 1 0; min-width: 0; padding: 0 4px; font-size: 18px; white-space: nowrap; }
+  .reg .pcard { font-size: 18px; padding: 4px 10px; }
+  .money .coin { width: 50px; height: 50px; font-size: 16px; }
+  .money .coin.s { width: 46px; height: 46px; font-size: 14px; }
+  .money .note { width: 80px; height: 46px; font-size: 18px; }
+}
+
 /* cheaper */
 .opts.offers .opt { font-size: clamp(19px, 3vh, 30px); line-height: 1.25; min-height: clamp(80px, 13vh, 130px); }
 .opts.offers .opt b { font-family: Arial, sans-serif; font-size: 1.25em; }
@@ -529,6 +539,8 @@ body.no-tabs #view { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
 .sdk .sc.sel { border-color: #e8912d; box-shadow: 0 0 0 4px #e8912d inset; }
 .palette { flex: none; display: flex; gap: var(--gap); justify-content: center; direction: ltr; }
 .palette .pal { flex: 0 1 110px; min-width: 0; font-size: clamp(30px, min(9vw, 6vh), 58px); padding: 4px; min-height: clamp(60px, 10vh, 96px); }
+
+@media (max-width: 480px) { .palette { gap: 6px; } .palette .pal { font-size: clamp(25px, 8vw, 34px); padding: 2px; border-width: 3px; } }
 
 /* pattern */
 /* one line only – on two lines the answer always sat right above the question mark */

@@ -1,27 +1,28 @@
 /* קואורדינציה – מראה. Copy the coloured shape onto the empty board as its mirror image.
-   Levels: 3x3 board with 3 squares → 6x6 with 14; from level 21 the mirror line is horizontal (upside down) on some boards.
+   Levels: 5x5 board with 8 squares → 6x6 with 15; some boards mirror upside down; from level 16 some mirror both ways.
    Score = 75% correct without mistakes + 25% speed. */
 (function () {
   const ROUNDS = 4;
   Games.register({
     id: "mirror", cat: "coord", name: "מראה", icon: "🪞",
     desc: "ציירו את תמונת המראה של הצורה",
-    how: `בלוח אחד יש צורה צבועה. צבעו בלוח הריק את תמונת המראה שלה – כאילו יש מראה על הקו שבין הלוחות. געו במשבצת כדי לצבוע. משבצת לא נכונה תהבהב באדום. ${ROUNDS} לוחות. ברמות גבוהות הלוח גדול יותר, ומרמה 21 לפעמים המראה למטה (הפוך).`,
+    how: `בלוח אחד יש צורה צבועה. צבעו בלוח הריק את תמונת המראה שלה – כאילו יש מראה על הקו שבין הלוחות. געו במשבצת כדי לצבוע. משבצת לא נכונה תהבהב באדום. ${ROUNDS} לוחות. ברמות גבוהות הלוח גדול יותר, ולפעמים המראה למטה. מרמה 16 יש גם מראה כפולה – הופכים גם לצדדים וגם למעלה־למטה.`,
     start(stage, level, api) {
-      const n = level <= 6 ? 3 : level <= 14 ? 4 : level <= 22 ? 5 : 6;
-      const k = Math.round(lerp(3, 14, level));
+      const n = level <= 14 || stage.clientHeight < 480 ? 5 : 6; // a small phone has no room for two 6x6 boards
+      const k = Math.round(lerp(8, 15, level));
       const T = timersKit();
       let round = 0, right = 0, mistakes = 0, need = 0, times = [], fit = null;
       function play() {
         round++; api.status(`לוח ${round}/${ROUNDS}`);
-        // mirror line between top and bottom boards: sometimes from level 21, and always when big boards would not fit side by side
-        const narrow = stage.clientWidth < stage.clientHeight * 0.8 && n >= 5;
-        const vertical = narrow || (level >= 21 && Math.random() < 0.5);
+        // mirror line between top and bottom boards: sometimes, and always when the boards would not fit side by side
+        const narrow = stage.clientWidth < stage.clientHeight * 0.8;
+        const vertical = narrow || Math.random() < 0.5;
+        const both = level >= 16 && Math.random() < 0.5;
         const filled = new Set(shuffle([...Array(n * n).keys()]).slice(0, Math.min(k, n * n - 2)));
-        const mirrorOf = (i) => { const r = Math.floor(i / n), c = i % n; return vertical ? (n - 1 - r) * n + c : r * n + (n - 1 - c); };
+        const mirrorOf = (i) => { const r = Math.floor(i / n), c = i % n; return both ? (n - 1 - r) * n + (n - 1 - c) : vertical ? (n - 1 - r) * n + c : r * n + (n - 1 - c); };
         const target = new Set([...filled].map(mirrorOf));
         need += target.size;
-        api.msg(vertical ? "המראה למטה – ציירו הפוך" : "ציירו את תמונת המראה", "soft");
+        api.msg(both ? "מראה כפולה – גם לצדדים וגם למעלה־למטה" : vertical ? "המראה למטה – ציירו הפוך" : "ציירו את תמונת המראה", "soft");
         stage.innerHTML = `<div class="board"><div class="b-main mirwrap ${vertical ? "vert" : ""}"><div class="grid m-src"></div><div class="m-line"></div><div class="grid m-dst"></div></div>
           <div class="b-row"><span class="counter">נשארו <b>${target.size}</b></span></div></div>`;
         const src = $(".m-src", stage), dst = $(".m-dst", stage), wrap = $(".mirwrap", stage), cnt = $(".counter b", stage);

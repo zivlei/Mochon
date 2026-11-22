@@ -1,5 +1,5 @@
 /* זיכרון – פנים ושמות. Meet a few people (face + name), then match names to faces.
-   Levels: 3 → 8 people, less time to meet them; from level 16 some questions go the other way (name → face).
+   Levels: 6 → 9 people, less time to meet them. Some questions go the other way (name → face).
    Score = 80% correct + 20% speed. */
 (function () {
   // women and men are kept apart so every name fits the face it belongs to
@@ -14,10 +14,10 @@
   Games.register({
     id: "faces", cat: "memory", name: "פנים ושמות", icon: "🙋",
     desc: "הכירו אנשים וזכרו את שמם",
-    how: `תכירו כמה אנשים – לכל אחד פרצוף ושם. זכרו אותם! אחר כך יופיע פרצוף, ובוחרים את השם שלו. מרמה 16 לפעמים יופיע שם, ובוחרים את הפרצוף. ברמות גבוהות יש יותר אנשים ופחות זמן.`,
+    how: `תכירו כמה אנשים – לכל אחד פרצוף ושם. זכרו אותם! אחר כך יופיע פרצוף, ובוחרים את השם שלו. לפעמים יופיע שם, ובוחרים את הפרצוף. ברמות גבוהות יש יותר אנשים ופחות זמן.`,
     start(stage, level, api) {
-      const k = Math.round(lerp(3, 8, level));
-      const meetMs = Math.round(k * lerp(3000, 1600, level) + 1000);
+      const k = Math.round(lerp(6, 9, level));
+      const meetMs = Math.round(k * lerp(2400, 1500, level) + 1000);
       const nf = Math.random() < 0.5 ? Math.floor(k / 2) : Math.ceil(k / 2);
       const pool = { f: { faces: shuffle(FACES.f.slice()), names: shuffle(NAMES.f.slice()) }, m: { faces: shuffle(FACES.m.slice()), names: shuffle(NAMES.m.slice()) } };
       const people = shuffle(Array.from({ length: k }, (_, i) => { const g = i < nf ? "f" : "m"; return { g, f: pool[g].faces.pop(), n: pool[g].names.pop() }; }));
@@ -45,7 +45,7 @@
           rounds: order.length, targetT: 4, accW: 80, unit: "שאלה",
           make(i) {
             const p = order[i - 1];
-            const reverse = level >= 16 && Math.random() < 0.4;
+            const reverse = Math.random() < lerp(0.3, 0.5, level);
             if (reverse) return { html: `<div class="q-line">${p.g === "f" ? "איך נראית" : "איך נראה"}</div><div class="big-q">${p.n}?</div>`, ans: p.f, opts: shuffle([p.f, ...distract(p, "f")]), prompt: "בחרו את הפרצוף", optClass: "emo" };
             return { html: `<div class="face-q">${p.f}</div><div class="q-line">${p.g === "f" ? "מה שמה?" : "מה שמו?"}</div>`, ans: p.n, opts: shuffle([p.n, ...distract(p, "n")]), prompt: "", optClass: "txt" };
           },

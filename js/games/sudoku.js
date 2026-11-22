@@ -1,5 +1,5 @@
 /* היגיון – סודוקו תמונות. Fill the board so every row, column and box has each picture once.
-   Levels: 4x4 with many pictures given → fewer given; from level 21 a 6x6 board. Every puzzle has one solution.
+   Levels: always 6x6, with 22 → 10 pictures given. Every puzzle has one solution.
    Score = 70% few mistakes + 30% speed. */
 (function () {
   const SYMS = ["🍎", "🍋", "🍇", "🥝", "🍊", "🫐"];
@@ -40,10 +40,10 @@
   Games.register({
     id: "sudoku", cat: "logic", name: "סודוקו תמונות", icon: "🍓",
     desc: "כל תמונה פעם אחת בכל שורה, טור ומשבצת",
-    how: `מלאו את הלוח כך שבכל שורה, בכל טור ובכל ריבוע מודגש תופיע כל תמונה פעם אחת בלבד. געו במשבצת ריקה ואז בתמונה שלמטה. תמונה לא נכונה לא תיכנס. ברמות 1–20 לוח 4×4, ומרמה 21 לוח 6×6. ככל שהרמה עולה – יש פחות תמונות מוכנות.`,
+    how: `מלאו את הלוח כך שבכל שורה, בכל טור ובכל ריבוע מודגש תופיע כל תמונה פעם אחת בלבד. געו במשבצת ריקה ואז בתמונה שלמטה. תמונה לא נכונה לא תיכנס. ככל שהרמה עולה – יש פחות תמונות מוכנות.`,
     start(stage, level, api) {
-      const N = level <= 20 ? 4 : 6;
-      const givens = N === 4 ? Math.round(lerp(12, 4, Math.min(30, level * 1.5))) : Math.round(lerp(26, 12, (level - 20) * 3));
+      const N = 6;
+      const givens = Math.round(lerp(22, 10, level));
       const { sol, g, br, bc } = make(N, givens);
       const syms = SYMS.slice(0, N);
       const T = timersKit();
@@ -58,7 +58,7 @@
         return `<button class="cell pic sc ${v >= 0 ? "given" : "empty"} ${cls}" data-i="${i}">${v >= 0 ? syms[v] : ""}</button>`;
       }).join("");
       grid.style.direction = "ltr";
-      fit = () => fitIn(grid, N * N, 1, N); fit();
+      fit = () => fitGrid(grid, N * N, grid.parentElement.clientWidth - 8, grid.parentElement.clientHeight - 14, 1, N); fit(); // less the gaps between the boxes
       const select = (i) => { sel = i; grid.querySelectorAll(".sel").forEach((x) => x.classList.remove("sel")); if (i >= 0) grid.children[i].classList.add("sel"); };
       const firstEmpty = () => g.findIndex((v) => v < 0);
       select(firstEmpty());
@@ -81,7 +81,7 @@
       function finish() {
         const t = (Date.now() - t0) / 1000, acc = blanks / (blanks + mistakes);
         api.finish({
-          score: Math.round(100 * acc * (0.7 + 0.3 * speedFactor(t / blanks, N === 4 ? 4 : 7))),
+          score: Math.round(100 * acc * (0.7 + 0.3 * speedFactor(t / blanks, 7))),
           stats: [["משבצות שמילאתם", blanks], ["טעויות", mistakes], ["גודל הלוח", `${N}×${N}`]]
         });
       }

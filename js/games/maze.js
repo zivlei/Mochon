@@ -1,5 +1,5 @@
 /* היגיון – מבוך. Lead the ball from start to the flag. Tap the next square or slide a finger along the path.
-   Levels: maze 4x4 → 11x11. Score = 60% short route (few dead ends) + 40% speed. */
+   Levels: maze 8x8 → 14x14 (never squares under 28px on a phone). Score = 60% short route (few dead ends) + 40% speed. */
 (function () {
   const ROUNDS = 2;
   function makeMaze(n) {
@@ -31,7 +31,8 @@
     desc: "הובילו את הכדור אל הדגל",
     how: `הובילו את הכדור 🔵 אל הדגל 🏁. געו במשבצת שליד הכדור כדי להזיז אותו, או החליקו את האצבע לאורך השביל. אי אפשר לעבור דרך קירות. ${ROUNDS} מבוכים. ככל שתגיעו בדרך קצרה ומהירה יותר – הציון גבוה יותר. ברמות גבוהות המבוך גדול יותר.`,
     start(stage, level, api) {
-      const n = Math.round(lerp(4, 11, level));
+      const room = Math.min(stage.clientWidth || 400, stage.clientHeight || 400);
+      const n = Math.max(8, Math.min(Math.round(lerp(8, 14, level)), Math.floor(room / 28)));
       const T = timersKit();
       let round = 0, effSum = 0, times = [], fit = null;
       function play() {

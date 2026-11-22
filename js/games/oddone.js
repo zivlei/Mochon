@@ -1,19 +1,18 @@
-/* ריכוז – מצאו את השונה. Levels: grid 3x3→6x6, pictures become more similar. Score = 65% accuracy + 35% speed */
+/* ריכוז – מצאו את השונה. Levels: grid 5x5→6x6, pictures become more similar. Score = 65% accuracy + 35% speed */
 (function () {
-  const PAIRS = {
-    1: [["🍎", "🍌"], ["🐱", "🐟"], ["⭐", "🌙"], ["🚗", "🏠"], ["🌻", "☕"], ["🎈", "🍇"], ["🐶", "🌳"]],
-    2: [["🍎", "🍅"], ["🐱", "🐯"], ["🌻", "🌼"], ["🚗", "🚕"], ["🐶", "🐺"], ["🍋", "🍌"], ["🐝", "🐞"], ["🍇", "🫐"]],
-    3: [["😀", "😃"], ["🙂", "😊"], ["😐", "😑"], ["🕐", "🕑"], ["🌲", "🌳"], ["🍎", "🍏"], ["🐕", "🐩"], ["🌖", "🌗"]]
-  };
+  const PAIRS = [["🍎", "🍅"], ["🐱", "🐯"], ["🌻", "🌼"], ["🚗", "🚕"], ["🐶", "🐺"], ["🍇", "🫐"],
+    ["😀", "😃"], ["🙂", "😊"], ["😐", "😑"], ["🕐", "🕑"], ["🌲", "🌳"], ["🍎", "🍏"], ["🐕", "🐩"], ["🌖", "🌗"]];
+  const CLOSE = PAIRS.slice(6);
+  const FLIP = ["🐟", "🐘", "🐢", "🦆", "🚲", "🐕", "🐎", "🐌"]; // pictures whose mirror image is clearly different
   const ROUNDS = 8;
   Games.register({
     id: "oddone", cat: "focus", name: "מצאו את השונה", icon: "🔍",
     desc: "מצאו את התמונה היחידה שאינה כמו האחרות",
-    how: `${ROUNDS} סיבובים. בכל סיבוב כל התמונות זהות חוץ מאחת – לחצו עליה. ברמות גבוהות יש יותר תמונות והן דומות יותר.`,
+    how: `${ROUNDS} סיבובים. בכל סיבוב כל התמונות זהות חוץ מאחת – לחצו עליה. לפעמים זו אותה תמונה – רק פונה לצד השני. ברמות גבוהות יש יותר תמונות והן דומות יותר.`,
     start(stage, level, api) {
-      const cols = level <= 6 ? 3 : level <= 14 ? 4 : level <= 22 ? 5 : 6, n = cols * cols;
-      const set = PAIRS[level <= 10 ? 1 : level <= 20 ? 2 : 3];
-      const targetT = lerp(4, 9, level);
+      const cols = level <= 8 ? 5 : 6, n = cols * cols;
+      const set = level <= 5 ? PAIRS : CLOSE, flipP = lerp(0.3, 0.6, level);
+      const targetT = lerp(5, 9, level);
       const grid = document.createElement("div");
       grid.className = "grid"; stage.appendChild(grid);
       const timers = [], later = (f, ms) => timers.push(setTimeout(f, ms));
@@ -24,13 +23,14 @@
       function next() {
         if (round >= ROUNDS) return finish();
         round++; lock = false; api.status(`סיבוב ${round}/${ROUNDS}`);
-        const pair = pick(set);
+        const f = pick(FLIP), facing = (s) => `<span style="display:inline-block;transform:scaleX(${s})">${f}</span>`;
+        const pair = Math.random() < flipP ? [facing(1), facing(-1)] : pick(set);
         const [main, odd] = Math.random() < 0.5 ? pair : [pair[1], pair[0]];
         oddIdx = rand(0, n - 1);
         grid.innerHTML = "";
         for (let i = 0; i < n; i++) {
           const b = document.createElement("button");
-          b.className = "cell"; b.textContent = i === oddIdx ? odd : main; b.dataset.i = i;
+          b.className = "cell"; b.innerHTML = i === oddIdx ? odd : main; b.dataset.i = i;
           grid.appendChild(b);
         }
         shown = Date.now();

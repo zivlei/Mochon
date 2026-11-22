@@ -1,5 +1,5 @@
 /* יום־יום – סידורים. Plan the shortest walk from home through all the errands and back home.
-   Levels: 2 → 6 places on a growing street map. Score = 80% how close to the shortest route + 20% speed. */
+   Levels: 5 → 7 places on a growing street map. Score = 80% how close to the shortest route + 20% speed. */
 (function () {
   const ROUNDS = 3;
   const PLACES = [["🏦", "בנק"], ["📮", "דואר"], ["🛒", "מכולת"], ["💊", "בית מרקחת"], ["🏥", "מרפאה"], ["📚", "ספרייה"], ["🥖", "מאפייה"], ["💇", "מספרה"], ["🌳", "פארק"], ["☕", "בית קפה"]];
@@ -11,8 +11,8 @@
     desc: "תכננו את הדרך הקצרה ביותר",
     how: `על המפה יש את הבית 🏠 וכמה מקומות שצריך להגיע אליהם. געו במקומות לפי הסדר שבו תלכו – ובסוף חוזרים הביתה. נסו למצוא את הדרך הקצרה ביותר! ${ROUNDS} מפות. טעיתם בסדר? לחצו "מהתחלה". ברמות גבוהות יש יותר מקומות.`,
     start(stage, level, api) {
-      const k = Math.round(lerp(2, 6, level));
-      const G = k <= 3 ? 4 : k <= 5 ? 5 : 6;
+      const k = Math.round(lerp(5, 7, level));
+      const G = k <= 5 ? 5 : 6;
       const T = timersKit();
       let round = 0, effSum = 0, times = [], fit = null;
       function play() {
@@ -65,7 +65,7 @@
       function finish() {
         const eff = effSum / ROUNDS, at = avg(times);
         api.finish({
-          score: Math.round(100 * Math.pow(eff, 1.5) * (0.8 + 0.2 * speedFactor(at, k * 4))),
+          score: Math.round(100 * Math.pow(eff, 4) * (0.8 + 0.2 * speedFactor(at, k * 4))),
           stats: [["קרבה לדרך הקצרה", Math.round(eff * 100) + "%"], ["מקומות בכל מפה", k]]
         });
       }

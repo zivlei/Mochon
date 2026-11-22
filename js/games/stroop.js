@@ -1,6 +1,6 @@
 /* ריכוז – צבע או מילה (Stroop with rule switching).
    A colour name is written in a different ink colour. A sign says whether to answer by the INK colour or by the WORD.
-   Levels: rule switches more often, 4 → 6 colours, fewer matching word/ink pairs, less time per answer.
+   Levels: six colours throughout; rule switches more often, fewer matching word/ink pairs, less time per answer.
    Score = 75% correct + 25% speed (speed counts only on correct answers). */
 (function () {
   const COLORS = [
@@ -17,19 +17,17 @@
   Games.register({
     id: "stroop", cat: "focus", name: "צבע או מילה", icon: "🎨",
     desc: "לחצו לפי צבע הכתב – או לפי מה שכתוב",
-    how: `${TRIALS} מילים של צבעים, כתובות בצבעים אחרים. המסך מראה לפי מה עונים:<br>🎨 <b>לפי הצבע</b> – לוח כהה וכפתורי צבע. לחצו על הצבע שבו המילה כתובה, והתעלמו ממה שכתוב.<br>📖 <b>לפי המילה</b> – לוח בהיר כמו דף, וכפתורים עם מילים. לחצו על המילה שכתובה, והתעלמו מצבע הכתב.<br>ברמות גבוהות השלט מתחלף יותר, יש יותר צבעים ופחות זמן.`,
+    how: `${TRIALS} מילים של צבעים, כתובות בצבעים אחרים. המסך מראה לפי מה עונים:<br>🎨 <b>לפי הצבע</b> – לוח כהה וכפתורי צבע. לחצו על הצבע שבו המילה כתובה, והתעלמו ממה שכתוב.<br>📖 <b>לפי המילה</b> – לוח בהיר כמו דף, וכפתורים עם מילים. לחצו על המילה שכתובה, והתעלמו מצבע הכתב.<br>ברמות גבוהות השלט מתחלף יותר, יש פחות זמן.`,
     start(stage, level, api) {
-      const nColors = level >= 11 ? 6 : 4;
-      const palette = COLORS.slice(0, nColors);
-      const windowMs = Math.round(lerp(7000, 2200, level));
-      const congruentP = lerp(0.3, 0, level);
-      // how long a rule stays: blocks of 4 at the start, random switching later, any trial at the top
-      const switchEvery = level <= 5 ? 4 : level <= 15 ? 0 : -1;
+      const palette = COLORS;
+      const windowMs = Math.round(lerp(4400, 2200, level));
+      const congruentP = lerp(0.15, 0, level);
+      const switchP = lerp(0.35, 0.55, level);
       stage.innerHTML = `<div class="stroop">
           <div class="rule"></div>
           <div class="sword"><b class="sbadge"></b><span></span></div>
           <div class="timebar small"><i></i></div>
-          <div class="sopts ${nColors > 4 ? "six" : ""}">${palette.map((p) => `<button class="sopt" data-id="${p.id}" style="--sc:${p.c}"><i></i><span>${p.name}</span></button>`).join("")}</div>
+          <div class="sopts six">${palette.map((p) => `<button class="sopt" data-id="${p.id}" style="--sc:${p.c}"><i></i><span>${p.name}</span></button>`).join("")}</div>
         </div>`;
       const ruleEl = $(".rule", stage), wordEl = $(".sword span", stage), bar = $(".timebar i", stage), optsEl = $(".sopts", stage), badgeEl = $(".sbadge", stage);
       const timers = [], later = (f, ms) => timers.push(setTimeout(f, ms));
@@ -38,10 +36,8 @@
 
       function nextRule() {
         let r = rule;
-        if (n === 1) r = level <= 5 ? "ink" : pick(["ink", "word"]);
-        else if (switchEvery > 0) { if ((n - 1) % switchEvery === 0) r = rule === "ink" ? "word" : "ink"; }
-        else if (switchEvery === 0) { if (Math.random() < 0.35) r = rule === "ink" ? "word" : "ink"; }
-        else r = pick(["ink", "word"]);
+        if (n === 1) r = pick(["ink", "word"]);
+        else if (Math.random() < switchP) r = rule === "ink" ? "word" : "ink";
         if (r !== rule && n > 1) switches++;
         const changed = r !== rule || n === 1;
         rule = r;

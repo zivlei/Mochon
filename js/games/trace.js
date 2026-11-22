@@ -8,8 +8,8 @@
     how: `שימו את האצבע על הנקודה הירוקה והחליקו לאורך הדרך עד הדגל 🏁, בלי לצאת מהדרך. אם הרמתם את האצבע – המשיכו מאיפה שעצרתם. ${ROUNDS} דרכים. ברמות גבוהות הדרך צרה יותר ומתפתלת יותר.`,
     start(stage, level, api) {
       const T = timersKit();
-      const bends = Math.round(lerp(2, 7, level));
-      const widthF = lerp(0.13, 0.045, level);
+      const bends = Math.round(lerp(4, 8, level));
+      const widthF = lerp(0.092, 0.0443, level);
       let round = 0, inSum = 0, reachSum = 0, times = [];
       function play() {
         round++; api.status(`דרך ${round}/${ROUNDS}`); api.msg("החליקו מהנקודה הירוקה אל הדגל", "soft");

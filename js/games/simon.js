@@ -1,4 +1,4 @@
-/* זיכרון – רצף. Levels: target 3→12, faster playback, 6 buttons from level 16. Score = longest sequence vs target */
+/* זיכרון – רצף. Levels: target 7→13, faster playback, 6 buttons from level 6. Score = longest sequence vs target */
 (function () {
   const PADS = [
     { e: "☀️", c: "#f2c230", f: 392, n: "שמש" },
@@ -11,12 +11,12 @@
   Games.register({
     id: "simon", cat: "memory", name: "רצף", icon: "🔁",
     desc: "זכרו את סדר ההדלקה וחזרו עליו",
-    how: "צפו בכפתורים שנדלקים לפי הסדר, ואז לחצו עליהם באותו הסדר. בכל שלב הרצף מתארך באחד. מותר לטעות פעם אחת. מרמה 16 יש 6 כפתורים.",
+    how: "צפו בכפתורים שנדלקים לפי הסדר, ואז לחצו עליהם באותו הסדר. בכל שלב הרצף מתארך באחד. מותר לטעות פעם אחת. מרמה 6 יש 6 כפתורים.",
     start(stage, level, api) {
-      const target = 3 + Math.floor((level - 1) / 3);
-      const startLen = Math.max(2, target - 5);
-      const speed = Math.round(lerp(1050, 520, level));
-      const nPads = level >= 16 ? 6 : 4;
+      const target = Math.round(lerp(7, 12.6, level));
+      const startLen = Math.max(3, target - 4);
+      const speed = Math.round(lerp(830, 510, level));
+      const nPads = level >= 6 ? 6 : 4;
       const grid = document.createElement("div");
       grid.className = "grid"; stage.appendChild(grid);
       const pads = PADS.slice(0, nPads).map((p, k) => {

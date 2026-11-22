@@ -1,29 +1,28 @@
 /* זיכרון – רשימת קניות. Study a shopping list, then pick its items from a shelf.
-   Levels: 3 → 10 items, bigger shelf, less study time; from level 16 the list is written in words only.
+   Levels: 6 → 11 items, bigger shelf, less study time. Words only, and both rounds use the same shelf.
    Score = 80% found items (minus wrong picks) + 20% speed. */
 (function () {
   const ROUNDS = 2;
   Games.register({
     id: "shopping", cat: "memory", name: "רשימת קניות", icon: "🛒",
     desc: "זכרו את הרשימה ומצאו במדף",
-    how: `תופיע רשימת קניות – זכרו אותה. אחר כך יופיע מדף עם הרבה מוצרים: געו בכל מה שהיה ברשימה. אם שכחתם – לחצו "סיימתי". ${ROUNDS} סבבים.<br>ברמות גבוהות הרשימה ארוכה יותר ויש פחות זמן. מרמה 16 הרשימה כתובה במילים בלבד.`,
+    how: `תופיע רשימת קניות – זכרו אותה. אחר כך יופיע מדף עם הרבה מוצרים: געו בכל מה שהיה ברשימה. אם שכחתם – לחצו "סיימתי". ${ROUNDS} סבבים.<br>ברמות גבוהות הרשימה ארוכה יותר ויש פחות זמן. הרשימה כתובה במילים, ובסבב השני אותו מדף – עם רשימה אחרת.`,
     start(stage, level, api) {
-      const k = Math.round(lerp(3, 10, level));
-      const shelfN = Math.min(24, Math.round(k * lerp(2.2, 2.4, level)));
-      const studyMs = Math.round(k * lerp(2800, 1400, level));
-      const wordsOnly = level >= 16;
-      const pool = itemsOf("fruit", "veg", "food", "thing");
+      const k = Math.round(lerp(6, 11, level));
+      const shelfN = Math.min(24, Math.round(k * 2.5));
+      const studyMs = Math.round(k * lerp(2100, 1350, level));
+      const shelf = shuffle(itemsOf("fruit", "veg", "food")).slice(0, shelfN);
       const T = timersKit();
       let round = 0, hits = 0, wrong = 0, total = 0, fit = null;
       const times = [];
 
       function study() {
         round++; api.status(`סבב ${round}/${ROUNDS}`);
-        const shelf = shuffle(pool.slice()).slice(0, shelfN), list = shelf.slice(0, k);
+        const list = shuffle(shelf.slice()).slice(0, k);
         total += k;
         api.msg("זכרו את הרשימה", "soft");
         stage.innerHTML = `<div class="board">
-            <div class="b-main"><div class="list-card ${k > 6 ? "two" : ""}">${list.map((i) => `<div class="li">${wordsOnly ? "•" : `<span>${i.e}</span>`}<b>${i.n}</b></div>`).join("")}</div></div>
+            <div class="b-main"><div class="list-card ${k > 6 ? "two" : ""}">${list.map((i) => `<div class="li">•<b>${i.n}</b></div>`).join("")}</div></div>
             <div class="timebar small"><i></i></div>
             <div class="b-row"><button class="btn slim ready">✔ זכרתי</button></div></div>`;
         runBar($(".timebar i", stage), studyMs);

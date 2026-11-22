@@ -1,5 +1,5 @@
 /* ריכוז – מצאו את ההבדלים. Two boards of pictures, almost the same. Tap every picture that is different (on either board).
-   Levels: 3x3 → 6x5 boards, 2 → 5 differences, and from level 11 the changes are look-alikes (🍎/🍏, 🐶/🐕).
+   Levels: 5x5 → 6x5 boards, 4 → 6 differences. Every change is a look-alike (🍎/🍏, 🐶/🐕).
    Score = 70% differences found (minus wrong taps) + 30% speed. */
 (function () {
   const ROUNDS = 3;
@@ -8,27 +8,23 @@
   Games.register({
     id: "diff", cat: "focus", name: "מצאו את ההבדלים", icon: "🔍",
     desc: "שני לוחות כמעט זהים – מה שונה?",
-    how: `יש שני לוחות של תמונות, כמעט זהים. געו בכל תמונה ששונה בין הלוחות (אפשר בכל אחד מהלוחות). למטה רואים כמה הבדלים נשארו. ${ROUNDS} סבבים.<br>ברמות גבוהות הלוחות גדולים יותר, יש יותר הבדלים, ומרמה 11 ההבדלים דומים מאוד (🍎 ו-🍏).`,
+    how: `יש שני לוחות של תמונות, כמעט זהים. געו בכל תמונה ששונה בין הלוחות (אפשר בכל אחד מהלוחות). למטה רואים כמה הבדלים נשארו. ${ROUNDS} סבבים.<br>ברמות גבוהות הלוחות גדולים יותר, ויש יותר הבדלים. ההבדלים תמיד דומים מאוד (🍎 ו-🍏).`,
     start(stage, level, api) {
-      const cols = level <= 5 ? 3 : level <= 12 ? 4 : level <= 21 ? 5 : 6;
-      const rows = level <= 5 ? 3 : level <= 12 ? 4 : 5;
+      const cols = level <= 8 ? 5 : 6;
+      const rows = 5;
       const n = cols * rows;
-      const nd = Math.round(lerp(2, 5, level));
-      const similar = level >= 11 ? lerp(0.4, 1, level) : 0;
+      const nd = Math.round(lerp(4, 6, level));
       const T = timersKit();
       let round = 0, found = 0, total = 0, wrong = 0, fit = null, t0 = 0;
       const times = [];
 
       function play() {
         round++; api.status(`סבב ${round}/${ROUNDS}`);
-        const pool = PAIRS.map((p) => p[0]).concat(itemsOf("fruit", "animal", "thing").map((i) => i.e));
+        const pool = PAIRS.flat();
         const base = Array.from({ length: n }, () => pick(pool));
         const other = base.slice();
         const where = shuffle([...Array(n).keys()]).slice(0, nd);
-        where.forEach((i) => {
-          const pair = PAIRS.find((p) => p.includes(base[i]));
-          other[i] = pair && Math.random() < similar ? pair.find((x) => x !== base[i]) : pick(pool.filter((x) => x !== base[i]));
-        });
+        where.forEach((i) => (other[i] = PAIRS.find((p) => p.includes(base[i])).find((x) => x !== base[i])));
         total += nd;
         stage.innerHTML = `<div class="board"><div class="b-main diffwrap"><div class="grid d1"></div><div class="grid d2"></div></div>
           <div class="b-row"><span class="counter">נשארו <b>${nd}</b> הבדלים</span></div></div>`;

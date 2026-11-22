@@ -2,7 +2,7 @@
 "use strict";
 
 /** Bump this together with version.json on every release – installed apps compare it to show "update available". */
-const APP_VERSION = "3.4.6";
+const APP_VERSION = "3.5.0";
 
 // ---------- helpers ----------
 const $ = (s, r) => (r || document).querySelector(s);
@@ -37,26 +37,32 @@ function wpick(items, w) {
   return items[items.length - 1];
 }
 /** distinct wrong options around a correct numeric answer */
+/** n options where the answer is equally likely to be the smallest, the largest or in between
+    (with random ± offsets it was the second-smallest more than half the time). deltas: distances to choose from. */
 function numOptions(ans, n, deltas) {
-  const opts = new Set([ans]);
-  deltas = deltas || [1, 2, 3, 10, -1, -2, -3, -10, 5, -5];
-  let guard = 0;
-  while (opts.size < n && guard++ < 200) { const v = ans + pick(deltas); if (v >= 0) opts.add(v); }
+  const dist = [...new Set((deltas || [1, 2, 3, 5, 10]).map(Math.abs))].filter((d) => d > 0);
+  const lower = shuffle(dist.filter((d) => ans - d > 0).map((d) => ans - d));
+  const higher = shuffle(dist.map((d) => ans + d));
+  const nLow = rand(0, Math.min(n - 1, lower.length));
+  const opts = new Set([ans, ...lower.slice(0, nLow), ...higher.slice(0, n - 1 - nLow)]);
   let k = 11; while (opts.size < n) opts.add(ans + k++);
   return shuffle([...opts]);
 }
-
-/** Size a CSS grid of n cells to fit W x H. ratio = cell height / width. */
 function fitGrid(grid, n, W, H, ratio, colsChoice) {
-  const gap = Math.round(clamp(W * 0.018, 8, 18));
-  let best = { w: 0, cols: 1 };
+  let gap = Math.round(clamp(W * 0.018, 8, 18));
+  let best;
   const tryCols = Array.isArray(colsChoice) ? colsChoice : colsChoice ? [colsChoice] : [1, 2, 3, 4, 5, 6, 7, 8];
-  for (const cols of tryCols) {
-    const rows = Math.ceil(n / cols);
-    const w = Math.min((W - gap * (cols - 1)) / cols, (H - gap * (rows - 1)) / rows / ratio);
-    if (w > best.w) best = { w, cols };
-  }
-  const w = Math.max(36, Math.floor(Math.min(best.w, 260)));
+  const measure = () => {
+    best = { w: 0, cols: 1 };
+    for (const cols of tryCols) {
+      const rows = Math.ceil(n / cols);
+      const w = Math.min((W - gap * (cols - 1)) / cols, (H - gap * (rows - 1)) / rows / ratio);
+      if (w > best.w) best = { w, cols };
+    }
+  };
+  measure();
+  if (best.w < 40) { gap = 4; measure(); } // small phone: give the room to the squares, not to the gaps
+  const w = Math.max(28, Math.floor(Math.min(best.w, 260)));
   grid.style.gridTemplateColumns = `repeat(${best.cols}, ${w}px)`;
   grid.style.gap = gap + "px";
   grid.style.setProperty("--cell", w + "px");
@@ -76,14 +82,6 @@ const CATS = {
 const MAX_LEVEL = 30, PASS_SCORE = 50;
 /** linear interpolation over levels 1..30 */
 const lerp = (a, b, l) => a + ((b - a) * (clamp(l, 1, MAX_LEVEL) - 1)) / (MAX_LEVEL - 1);
-/** Difficulty actually given to a game: the player's level 1 starts where level 12 used to (too easy before), level 30 stays the hardest. */
-const DIFF_START = 12;
-const diffLevel = (l) => Math.round(DIFF_START + ((clamp(l, 1, MAX_LEVEL) - 1) * (MAX_LEVEL - DIFF_START)) / (MAX_LEVEL - 1));
-/** first player level whose difficulty reaches d / last player level whose difficulty is still <= d */
-const levelFrom = (d) => { let l = 1; while (l < MAX_LEVEL && diffLevel(l) < d) l++; return l; };
-const levelUpTo = (d) => { let l = MAX_LEVEL; while (l > 1 && diffLevel(l) > d) l--; return l; };
-/** game instructions mention difficulty levels ("מרמה 21", "ברמות 1–10") – show them as the player's level numbers */
-const howText = (s) => s.replace(/(רמה|רמות) (\d+)(?:–(\d+))?/g, (m, w, a, b) => b ? `${w} ${levelFrom(+a)}–${levelUpTo(+b)}` : `${w} ${levelFrom(+a)}`);
 const levelMult = (l) => Math.round((1 + (l - 1) * 0.1) * 10) / 10;
 
 // ---------- shared picture bank: emoji, Hebrew name, type, colour (colour only where it is clear on every device) ----------

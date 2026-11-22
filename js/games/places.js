@@ -1,5 +1,5 @@
 /* זיכרון – איפה הוא היה? Pictures appear on a board, hide, then you point to where each one was.
-   Levels: board 3x3 → 5x5, 2 → 7 pictures, less time to look. Score = 85% correct places + 15% speed. */
+   Levels: board 4x4 → 5x5, 5 → 9 pictures, less time to look. Score = 85% correct places + 15% speed. */
 (function () {
   const ROUNDS = 3;
   Games.register({
@@ -7,9 +7,9 @@
     desc: "זכרו איפה כל תמונה הופיעה",
     how: `תמונות יופיעו על לוח. זכרו איפה כל אחת נמצאת! אחר כך הן יוסתרו, ולמטה תופיע תמונה – געו במשבצת שבה היא הייתה. ${ROUNDS} לוחות. ברמות גבוהות הלוח גדול יותר, יש יותר תמונות ופחות זמן.`,
     start(stage, level, api) {
-      const side = level <= 7 ? 3 : level <= 17 ? 4 : 5;
-      const k = Math.round(lerp(2, 7, level));
-      const lookMs = Math.round(k * lerp(2200, 1100, level) + 800);
+      const side = level <= 8 ? 4 : 5;
+      const k = Math.round(lerp(5, 9, level));
+      const lookMs = Math.round(k * lerp(1700, 1050, level) + 800);
       const T = timersKit();
       let round = 0, correct = 0, total = 0, fit = null;
       const times = [];

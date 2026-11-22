@@ -1,16 +1,16 @@
 /* זיכרון – הסדר הנכון. Pictures appear one after another; then tap them in the same order.
-   Levels: 3 → 8 pictures, each shown for less time; from level 21 extra pictures that were not shown are mixed in.
+   Levels: 5 → 9 pictures, each shown for less time, with 1 → 4 pictures that were not shown mixed in.
    Score = 85% pictures in the right place + 15% speed. */
 (function () {
   const ROUNDS = 3;
   Games.register({
     id: "order", cat: "memory", name: "הסדר הנכון", icon: "🎞️",
     desc: "זכרו באיזה סדר הופיעו התמונות",
-    how: `תמונות יופיעו אחת אחרי השנייה. זכרו את הסדר! אחר כך כולן יופיעו מעורבבות – געו בהן לפי הסדר שבו הופיעו. ${ROUNDS} סבבים. ברמות גבוהות יש יותר תמונות, הן מהירות יותר, ומרמה 21 מתערבבות גם תמונות שלא הופיעו.`,
+    how: `תמונות יופיעו אחת אחרי השנייה. זכרו את הסדר! אחר כך כולן יופיעו מעורבבות – געו בהן לפי הסדר שבו הופיעו. ${ROUNDS} סבבים. ברמות גבוהות יש יותר תמונות, הן מהירות יותר, ויש יותר תמונות שלא הופיעו בין האפשרויות.`,
     start(stage, level, api) {
-      const k = Math.round(lerp(3, 8, level));
-      const showMs = Math.round(lerp(1600, 800, level));
-      const extra = level >= 27 ? 3 : level >= 24 ? 2 : level >= 21 ? 1 : 0;
+      const k = Math.round(lerp(5, 9, level));
+      const showMs = Math.round(lerp(1270, 785, level));
+      const extra = Math.round(lerp(1, 4, level));
       const T = timersKit();
       let round = 0, correct = 0, total = 0, fit = null;
       const times = [];

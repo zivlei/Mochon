@@ -1,4 +1,4 @@
-/* קואורדינציה – תפוס את הפרי. Fruit falls from the top; slide the basket to catch it. From level 6 also avoid stones.
+/* קואורדינציה – תפוס את הפרי. Fruit falls from the top; slide the basket to catch it. Avoid the stones.
    Levels: faster falling, smaller basket, more at once. Score = 75% fruit caught + 25% stones avoided. */
 (function () {
   const GOOD = ["🍎", "🍐", "🍊", "🍋", "🍌", "🍇", "🍓", "🍑", "🥝", "🍒"];
@@ -8,10 +8,10 @@
     how: `פירות נופלים מלמעלה. החליקו את האצבע ימינה ושמאלה (בכל מקום על המסך) כדי להזיז את הסל 🧺 ולתפוס אותם. נופלות גם אבנים 🪨 – התחמקו מהן! ברמות גבוהות הכל נופל מהר יותר.`,
     start(stage, level, api) {
       const TOTAL = 20;
-      const fallMs = lerp(5200, 1900, level);                 // time to fall the full height
-      const gapMs = lerp(1700, 650, level);
-      const stoneP = level >= 6 ? lerp(0.15, 0.35, level) : 0;
-      const basketF = lerp(0.3, 0.17, level);
+      const fallMs = lerp(3600, 1890, level); // time to fall the full height
+      const gapMs = lerp(1170, 645, level);
+      const stoneP = lerp(0.235, 0.355, level);
+      const basketF = lerp(0.24, 0.17, level);
       stage.innerHTML = `<div class="b-main catch"><div class="basket">🧺</div></div>`;
       const box = $(".catch", stage), basket = $(".basket", stage);
       let W = 0, H = 0, bw = 0, bx = 0, items = [], spawned = 0, caught = 0, stones = 0, stonesHit = 0, last = 0, nextAt = 600, raf = 0, t0 = 0, over = false;

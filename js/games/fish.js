@@ -1,7 +1,7 @@
 /* ריכוז – דגים. A fish swims across the pond.
    🔵 blue fish → answer where its HEAD points.  🔴 red fish → answer where it SWIMS (ignore the head).
-   Levels: 1–4 blue only, 5–8 red only, 9+ mixed (more often), head and swim direction differ more,
-   less time, smaller fish, and from level 16 grey fish swim around as distractors.
+   Levels: always mixed (level 1 opens with 2 blue and 2 red for practice); head and swim direction differ more,
+   less time, smaller fish, and from level 4 grey fish swim around as distractors.
    Score = 75% correct + 25% speed (speed counts only on correct answers). */
 (function () {
   const TRIALS = 16;
@@ -27,14 +27,14 @@
   Games.register({
     id: "fish", cat: "focus", name: "דגים", icon: "🐟",
     desc: "כחול – לאן הראש, אדום – לאן הוא שוחה",
-    how: `${TRIALS} דגים ישחו על המסך. בתחתית יש 4 חיצים.<br>🔵 <b>דג כחול</b> – לחצו על החץ לכיוון שאליו <b>הראש</b> פונה.<br>🔴 <b>דג אדום</b> – לחצו על החץ לכיוון שאליו הוא <b>שוחה</b>, גם אם הראש פונה לצד אחר.<br>ברמה הראשונה רק דגים כחולים, בשנייה רק אדומים, ומשם – מעורבב. מרמה 16 שוחים גם דגים אפורים – מתעלמים מהם.`,
+    how: `${TRIALS} דגים ישחו על המסך. בתחתית יש 4 חיצים.<br>🔵 <b>דג כחול</b> – לחצו על החץ לכיוון שאליו <b>הראש</b> פונה.<br>🔴 <b>דג אדום</b> – לחצו על החץ לכיוון שאליו הוא <b>שוחה</b>, גם אם הראש פונה לצד אחר.<br>ברמה הראשונה מתחילים בשני כחולים ושני אדומים להיכרות, ומשם – מעורבב. מרמה 4 שוחים גם דגים אפורים – מתעלמים מהם.`,
     start(stage, level, api) {
-      const mode = api.playerLevel <= 1 ? "blue" : api.playerLevel <= 2 ? "red" : "mix"; // short practice first
-      const windowMs = Math.round(lerp(6000, 2000, level));
-      const mismatchP = lerp(0.35, 0.9, level);
-      const sizeF = lerp(0.26, 0.15, level);
-      const nGrey = level >= 16 ? (level >= 24 ? 3 : 2) : 0;
-      const legend = [mode !== "red" ? `<span class="lg-b">🔵 כחול: לאן הראש פונה</span>` : "", mode !== "blue" ? `<span class="lg-r">🔴 אדום: לאן הוא שוחה</span>` : ""].join("");
+      const practice = level === 1 ? ["blue", "blue", "red", "red"] : [];
+      const windowMs = Math.round(lerp(4250, 1950, level));
+      const mismatchP = lerp(0.65, 0.9, level);
+      const sizeF = lerp(0.213, 0.148, level);
+      const nGrey = level >= 18 ? 3 : level >= 4 ? 2 : 0;
+      const legend = `<span class="lg-b">🔵 כחול: לאן הראש פונה</span><span class="lg-r">🔴 אדום: לאן הוא שוחה</span>`;
       stage.innerHTML = `<div class="fishgame">
           <div class="legend">${legend}</div>
           <div class="pond"></div>
@@ -73,14 +73,14 @@
         n++; api.status(`${n}/${TRIALS}`);
         pond.innerHTML = "";
         arrowsEl.querySelectorAll(".arrow").forEach((b) => b.classList.remove("right", "wrong"));
-        // in mixed levels the colour switches more often as levels rise
-        let kind = mode === "mix" ? (lastKind && Math.random() > lerp(0.45, 0.7, level) ? lastKind : pick(["blue", "red"])) : mode;
+        // the colour switches more often as levels rise
+        const kind = practice[n - 1] || (lastKind && Math.random() > lerp(0.5, 0.7, level) ? lastKind : pick(["blue", "red"]));
         const head = pick(DIRS);
         const move = Math.random() < mismatchP ? otherDir(head) : head;
         for (let i = 0; i < nGrey; i++) { const h = pick(DIRS); addFish("grey", h, Math.random() < 0.6 ? otherDir(h) : h, false); }
         const el = addFish(kind, head, move, true);
         cur = { kind, ans: kind === "blue" ? head : move, el };
-        api.msg(kind !== lastKind && mode === "mix" ? (kind === "blue" ? "🔵 כחול – הראש" : "🔴 אדום – כיוון השחייה") : "", "soft");
+        api.msg(kind !== lastKind ? (kind === "blue" ? "🔵 כחול – הראש" : "🔴 אדום – כיוון השחייה") : "", "soft");
         lastKind = kind;
         bar.style.transition = "none"; bar.style.width = "100%"; void bar.offsetWidth;
         bar.style.transition = `width ${windowMs}ms linear`; bar.style.width = "0%";
@@ -110,7 +110,7 @@
           stats: [["תשובות נכונות", `${correct} מתוך ${TRIALS}`], ["זמן ממוצע לתשובה", at === null ? "—" : at.toFixed(1) + " שניות"]]
         });
       }
-      api.msg(mode === "blue" ? "דג כחול: לאן הראש פונה?" : mode === "red" ? "דג אדום: לאן הוא שוחה?" : "שימו לב לצבע הדג", "soft");
+      api.msg("שימו לב לצבע הדג", "soft");
       later(next, 1300);
       return { stop() { timers.forEach(clearTimeout); } };
     }

@@ -1,15 +1,15 @@
-/* קואורדינציה – רמזור (go / no-go). Tap when green, hold back on red (and yellow from level 16).
+/* קואורדינציה – רמזור (go / no-go). Tap when green, hold back on red. Yellow also cancels the next green, so the last light has to be remembered.
    Levels: shorter window, more "stop" signals. Score = 80% correct decisions + 20% reaction speed */
 (function () {
   const TOTAL = 20;
   Games.register({
     id: "traffic", cat: "coord", name: "רמזור", icon: "🚦",
-    desc: "לחצו כשהאור ירוק, עצרו כשהוא אדום",
-    how: `${TOTAL} אורות. כשהעיגול ירוק – לחצו עליו מהר. כשהוא אדום – אל תלחצו! מרמה 16 יש גם אור צהוב – גם בו לא לוחצים.`,
+    desc: "ירוק – לוחצים, אבל לא אחרי צהוב",
+    how: `${TOTAL} אורות. כשהעיגול ירוק – לחצו עליו מהר. כשהוא אדום – אל תלחצו! <br>🟡 <b>צהוב</b> – לא לוחצים, וגם <b>לא על הירוק הבא</b> אחריו (אפילו אם יש אדום באמצע).`,
     start(stage, level, api) {
-      const win = Math.round(lerp(2200, 700, level));
-      const stopP = lerp(0.25, 0.4, level);
-      const useYellow = level >= 16;
+      const win = Math.round(lerp(1550, 685, level));
+      const stopP = lerp(0.35, 0.45, level);
+      let go = false, skip = false;
       stage.innerHTML = '<div class="traffic"><button class="light off" aria-label="רמזור"></button></div>';
       const light = $(".light", stage);
       const timers = [], later = (f, ms) => timers.push(setTimeout(f, ms));
@@ -17,20 +17,23 @@
       let hits = 0, misses = 0, rejects = 0, falseAlarms = 0, greens = 0;
       const rts = [];
       const upd = () => api.status(`${shown}/${TOTAL}`);
-      upd(); api.msg("ירוק = לוחצים · אדום = לא לוחצים", "soft");
+      upd(); api.msg("אחרי צהוב – מדלגים על הירוק הבא", "soft");
 
-      function setLight(s) { state = s; light.className = "light " + s; light.textContent = s === "green" ? "👆" : s === "off" ? "" : "✋"; }
+      function setLight(s) { state = s; light.className = "light " + s; light.textContent = { off: "", green: "●", red: "■", yellow: "▲" }[s]; }
       function nextSignal() {
         if (shown >= TOTAL) return later(finish, 600);
         setLight("off");
         later(() => {
           shown++; upd();
           const stop = Math.random() < stopP;
-          if (!stop) greens++;
-          setLight(stop ? (useYellow && Math.random() < 0.4 ? "yellow" : "red") : "green");
+          const s = !stop ? "green" : !skip && Math.random() < 0.5 ? "yellow" : "red";
+          go = s === "green" && !skip;
+          if (s === "green") skip = false; else if (s === "yellow") skip = true;
+          if (go) greens++;
+          setLight(s);
           bornAt = Date.now();
           endTimer = setTimeout(() => {
-            if (state === "green") { misses++; api.msg("פספוס – היה ירוק", "soft"); }
+            if (go) { misses++; api.msg("פספוס – היה ירוק", "soft"); }
             else if (state !== "off") { rejects++; api.msg("יפה שעצרתם!", "good"); }
             nextSignal();
           }, win);
@@ -41,7 +44,7 @@
         e.preventDefault();
         if (state === "off") return;
         clearTimeout(endTimer);
-        if (state === "green") { hits++; rts.push(Date.now() - bornAt); api.sound.good(); api.msg(praise(), "good"); }
+        if (go) { hits++; rts.push(Date.now() - bornAt); api.sound.good(); api.msg(praise(), "good"); }
         else { falseAlarms++; api.sound.bad(); api.msg("אופס – באור הזה לא לוחצים", "soft"); }
         nextSignal();
       });

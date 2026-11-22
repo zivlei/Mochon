@@ -1,4 +1,4 @@
-/* קואורדינציה – בועות. Levels: bubbles shrink and vanish faster; from level 11 red "do not touch" bubbles appear.
+/* קואורדינציה – בועות. Levels: bubbles shrink and vanish faster; red "do not touch" bubbles throughout, more of them as levels rise.
    Score = hits + precision + reaction speed + avoiding red bubbles */
 (function () {
   const ICONS = ["🎈", "⭐", "🌸", "🍎", "🐞", "🦋"];
@@ -6,10 +6,10 @@
   Games.register({
     id: "targets", cat: "coord", name: "בועות", icon: "🫧",
     desc: "געו בבועות לפני שהן נעלמות",
-    how: `${TOTAL} בועות כחולות יופיעו בזו אחר זו. געו בכל בועה לפני שהיא נעלמת. מרמה 11 יופיעו גם בועות אדומות עם ✋ – בהן אסור לגעת!`,
+    how: `${TOTAL} בועות כחולות יופיעו בזו אחר זו. געו בכל בועה לפני שהיא נעלמת. יופיעו גם בועות אדומות עם ✋ – בהן אסור לגעת!`,
     start(stage, level, api) {
-      const life = Math.round(lerp(3500, 1150, level)), sizeF = lerp(0.32, 0.13, level);
-      const decoyP = level >= 11 ? lerp(0.15, 0.35, level) : 0;
+      const life = Math.round(lerp(2300, 1150, level)), sizeF = lerp(0.22, 0.13, level);
+      const decoyP = lerp(0.25, 0.4, level);
       stage.classList.add("arena");
       const timers = [], later = (f, ms) => timers.push(setTimeout(f, ms));
       let good = 0, hits = 0, stray = 0, decoys = 0, decoyHits = 0, bubble = null, bornAt = 0;
