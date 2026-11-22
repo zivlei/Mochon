@@ -5,6 +5,12 @@
   const ROUNDS = 10;
   const SH = { circle: ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣"], square: ["🟥", "🟧", "🟨", "🟩", "🟦", "🟪"], heart: ["❤️", "🧡", "💛", "💚", "💙", "💜"] };
   const UNITS = [[[0, 1]], [[0, 1, 2], [0, 0, 1], [0, 1, 1]], [[0, 1, 2, 3], [0, 0, 1, 1], [0, 1, 0, 2], [0, 1, 2, 2]], [[0, 0, 1, 2], [0, 1, 1, 2, 2], [0, 1, 2, 1], [0, 1, 2, 3, 4]]];
+  /** everything that could come next: one answer for each cycle length the row agrees with */
+  const continuations = (seq) => {
+    const next = new Set();
+    for (let p = 1; p < seq.length; p++) if (seq.every((x, k) => k < p || x === seq[k - p])) next.add(seq[seq.length - p]);
+    return next;
+  };
   Games.register({
     id: "pattern", cat: "logic", name: "מה הקטע?", icon: "🔷",
     desc: "מצאו את הקטע שחוזר והשלימו את מה שחסר",
@@ -16,22 +22,25 @@
         rounds: ROUNDS, targetT: lerp(5, 10, level), accW: 80, optClass: "emo",
         make() {
           const shapes = shuffle(Object.keys(SH)), cols = shuffle([0, 1, 2, 3, 4, 5]);
-          // one row only: on a narrow phone show fewer shapes so they stay big
-          const fitN = Math.max(7, Math.floor((stage.clientWidth || 400) / 40)) - 1;
-          let len = Math.min(Math.round(lerp(6, 9, level)), fitN), item, P;
+          // Phone: 6 places (5 shapes + "?"), so only units of up to 4 – the row has to show where the unit starts again
+          const phone = (stage.clientWidth || 400) < 600, maxP = phone ? 4 : Infinity;
+          let len = Math.round(lerp(6, 9, level)), item, P;
           if (!dual) {
-            const unit = pick(UNITS[Math.min(tier, 3)]);
+            const unit = pick(UNITS[Math.min(tier, 3)].filter((u) => u.length <= maxP));
             const shape = shapes[0];
-            P = unit.length; len = Math.max(len, P + 2);
+            P = unit.length; len = phone ? 5 : Math.max(len, P + 2);
             item = (k) => SH[shape][cols[unit[k % P]]];
           } else {
-            const cu = pick(UNITS[1]), su = pick([[0, 1], [0, 0, 1], [0, 1, 2]]);
+            const cu = pick(UNITS[1]), su = pick([[0, 1], [0, 0, 1], [0, 1, 2]].filter((u) => !phone || u.length === cu.length));
             P = cu.length % su.length === 0 ? cu.length : cu.length * su.length; // full cycle (both lengths are 2 or 3)
             item = (k) => SH[shapes[su[k % su.length]]][cols[cu[k % cu.length]]];
-            len = Math.max(Math.min(len, 10), P + 1);
+            len = phone ? 5 : Math.max(Math.min(len, 10), P + 1);
           }
           // the missing shape is always the last one
-          const seq = Array.from({ length: len }, (_, k) => item(k)), ans = item(len);
+          // start at a point in the unit where only one continuation is possible (🔴🔴🟢🔴🔴 could go on with 🟢 or 🔴)
+          const rows = Array.from({ length: P }, (_, from) => Array.from({ length: len + 1 }, (_, k) => item(from + k)));
+          const row = pick(rows.filter((r) => continuations(r.slice(0, len)).size === 1));
+          const seq = row.slice(0, len), ans = row[len];
           // wrong options: same colour other shape, same shape other colour, and one more
           const wrong = new Set();
           const allItems = Object.values(SH).flat();
